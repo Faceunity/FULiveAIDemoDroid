@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#1FB2FF</color>
+    <color name="colorPrimaryDark">#3700B3</color>
+    <color name="colorAccent">#03DAC5</color>
+
+    <color name="main_page_bg">#FF030010</color>
+    <color name="main_page_card_bg">#FF1B1936</color>
+    <color name="white_percent_12">#1FFFFFFF</color>
+    <color name="text_title">#FF1C182E</color>
+    <color name="text_classification_normal">#FF64677A</color>
+    <color name="text_classification_disable">#5264677A</color>
+    <color name="bg_config_classification">#FFF7F8FA</color>
+    <color name="config_divider">#FFE5E5EA</color>
+    <color name="config_transparent">#4D000000</color>
+    <color name="back_percent_50">#80000000</color>
+    <color name="bg_config_btn_start">#FF6C52FF</color>
+    <color name="bg_config_btn_end">#FF646BF9</color>
+    <color name="bg_config_item_selected">#176C52FF</color>
+    <color name="bg_config_item_disable">#FFF2F3F5</color>
+    <color name="bg_toast">#B3111226</color>
+    <color name="bg_gesture_normal">#FF33334D</color>
+
+</resources>
