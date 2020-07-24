@@ -136,7 +136,7 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
             return;
         }
 
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT | GLES20.GL_STENCIL_BUFFER_BIT);
         try {
             mSurfaceTexture.updateTexImage();
             mSurfaceTexture.getTransformMatrix(mTexMatrix);
@@ -290,16 +290,6 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
 
     public int getViewHeight() {
         return mViewHeight;
-    }
-
-    public int getHeight4Video() {
-        int h = mViewHeight * DEFAULT_PREVIEW_HEIGHT / mViewWidth;
-        return h;
-    }
-
-    public int getWidth4Video() {
-        int w = mViewWidth * DEFAULT_PREVIEW_WIDTH / mViewHeight;
-        return w;
     }
 
     public void handleFocus(float rawX, float rawY, int areaSize) {

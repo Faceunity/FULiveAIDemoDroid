@@ -9,6 +9,7 @@ import android.view.View;
 import android.widget.TextView;
 
 import com.faceunity.fuliveaidemo.R;
+import com.faceunity.fuliveaidemo.gles.core.GlUtil;
 import com.faceunity.fuliveaidemo.renderer.BaseCameraRenderer;
 import com.faceunity.fuliveaidemo.renderer.Camera1Renderer;
 import com.faceunity.fuliveaidemo.renderer.OnCameraRendererListener;
@@ -84,8 +85,8 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
     public int onDrawFrame(byte[] cameraNv21Byte, int cameraTexId, int cameraWidth, int cameraHeight, float[] mvpMatrix, float[] texMatrix, long timeStamp) {
         int fuTexId = mFURenderer.drawFrame(cameraNv21Byte, cameraTexId, cameraWidth, cameraHeight);
         trackHuman();
-        mPhotoTaker.send(fuTexId, mvpMatrix, texMatrix, mCameraRenderer.getViewWidth(), mCameraRenderer.getViewHeight());
-        mVideoRecorder.send(fuTexId, mvpMatrix, texMatrix, timeStamp);
+        mPhotoTaker.send(fuTexId, GlUtil.IDENTITY_MATRIX, texMatrix, cameraHeight, cameraWidth);
+        mVideoRecorder.send(fuTexId, GlUtil.IDENTITY_MATRIX, texMatrix, timeStamp);
         return fuTexId;
     }
 
@@ -145,7 +146,7 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
     @Override
     public void startRecord() {
         int videoWidth = BaseCameraRenderer.DEFAULT_PREVIEW_HEIGHT;
-        int videoHeight = mCameraRenderer.getHeight4Video();
+        int videoHeight = BaseCameraRenderer.DEFAULT_PREVIEW_WIDTH;
         mVideoRecorder.start(videoWidth, videoHeight);
     }
 

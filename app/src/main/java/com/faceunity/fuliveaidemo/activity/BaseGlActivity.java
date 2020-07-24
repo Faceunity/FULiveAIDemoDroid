@@ -1,10 +1,13 @@
 package com.faceunity.fuliveaidemo.activity;
 
+import android.app.Dialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -21,7 +24,6 @@ import com.faceunity.fuliveaidemo.renderer.OnRendererListener;
 import com.faceunity.fuliveaidemo.util.DensityUtils;
 import com.faceunity.fuliveaidemo.util.LifecycleHandler;
 import com.faceunity.fuliveaidemo.util.PhotoTaker;
-import com.faceunity.fuliveaidemo.util.ScreenUtils;
 import com.faceunity.fuliveaidemo.util.ToastUtil;
 import com.faceunity.fuliveaidemo.view.ConfigFragment;
 import com.faceunity.fuliveaidemo.view.OnMultiClickListener;
@@ -58,11 +60,12 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     private int mRecognizeCount;
     private int mResourceListType = RESOURCE_TYPE_NONE;
     private LifecycleHandler mLifecycleHandler;
+    private boolean mCallDestroyController;
     private Runnable mUpdateRecyclerTask = new Runnable() {
         @Override
         public void run() {
-            int gap = 5;
-            int skip = 2;
+            int gap = 0;
+            int skip = 0;
             if (mResourceListType == RESOURCE_TYPE_ACTION) {
                 gap = 6;
                 skip = 1;
@@ -83,7 +86,6 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().setBackgroundDrawable(null);
-        ScreenUtils.fullScreen(this);
         setContentView(R.layout.activity_base);
 
         mViewClickListener = new ViewClickListener();
@@ -329,17 +331,35 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     }
 
     public void setRenderMode(final int renderMode) {
+        final Dialog dialog = createLoadingDialog();
         Runnable callback = new Runnable() {
             @Override
             public void run() {
                 onRenderModeChanged(renderMode);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        dialog.dismiss();
+                    }
+                });
             }
         };
         if (renderMode == FURenderer.RENDER_MODE_NORMAL) {
             mFURenderer.destroyController(callback);
         } else if (renderMode == FURenderer.RENDER_MODE_CONTROLLER) {
+            dialog.show();
             mFURenderer.loadController(callback);
         }
+    }
+
+    public Dialog createLoadingDialog() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_loading, null);
+        Dialog dialog = new Dialog(this);
+        dialog.setCancelable(false);
+        dialog.setContentView(view, new ViewGroup.LayoutParams(
+                DensityUtils.dp2px(this, 110), DensityUtils.dp2px(this, 110)));
+        dialog.getWindow().setBackgroundDrawable(null);
+        return dialog;
     }
 
     public FURenderer getFuRenderer() {

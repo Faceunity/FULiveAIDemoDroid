@@ -34,5 +34,6 @@
     <string name="camera_open_failed">相机打开失败</string>
     <string name="camera_preview_failed">相机预览失败</string>
     <string name="camera_close_failed">相机关闭失败</string>
+    <string name="dialog_loading">数据加载中</string>
 
 </resources>

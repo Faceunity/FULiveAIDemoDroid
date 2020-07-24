@@ -101,7 +101,7 @@ public class PhotoRenderer extends AbstractLifeCycleRenderer implements GLSurfac
             return;
         }
 
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BITS);
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT | GLES20.GL_STENCIL_BUFFER_BIT);
         int fuTextureId = mOnPhotoRendererListener.onDrawFrame(mPhotoRgbaByte, mPhotoTextureId, mPhotoWidth, mPhotoHeight);
         mProgramTexture2d.drawFrame(fuTextureId, IMAGE_TEXTURE_MATRIX, mMvpMatrix);
 
