@@ -141,7 +141,7 @@ public class VideoRenderer extends AbstractLifeCycleRenderer implements GLSurfac
             return;
         }
 
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT | GLES20.GL_STENCIL_BUFFER_BIT);
         try {
             mSurfaceTexture.updateTexImage();
             mSurfaceTexture.getTransformMatrix(mTexMatrix);

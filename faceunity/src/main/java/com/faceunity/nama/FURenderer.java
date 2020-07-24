@@ -868,7 +868,7 @@ public class FURenderer {
         callTrackStatus();
         // 获取内部错误信息，并调用回调接口
         int errorCode = faceunity.fuGetSystemError();
-        if (errorCode != 1) {
+        if (errorCode != 0) {
             String errorMessage = faceunity.fuGetSystemErrorString(errorCode);
             Log.e(TAG, "system error code: " + errorCode + ", error message: " + errorMessage);
             if (mOnSystemErrorListener != null) {
@@ -954,6 +954,7 @@ public class FURenderer {
         queueEvent(new Runnable() {
             @Override
             public void run() {
+                faceunity.fuHumanProcessorReset();
                 faceunity.fuOnCameraChange();
             }
         });
