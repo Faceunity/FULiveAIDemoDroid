@@ -27,8 +27,6 @@ public class Camera1Renderer extends BaseCameraRenderer implements Camera.Previe
     private Camera mCamera;
     private int mFrontCameraId;
     private int mBackCameraId;
-    // 曝光补偿，进度 0.5 表示实际值为 0 就是无补偿
-    private float mExposureCompensation = 0.5F;
 
     public Camera1Renderer(Lifecycle lifecycle, Activity activity, GLSurfaceView glSurfaceView, OnCameraRendererListener onRendererStatusListener) {
         super(lifecycle, activity, glSurfaceView, onRendererStatusListener);
@@ -73,8 +71,7 @@ public class Camera1Renderer extends BaseCameraRenderer implements Camera.Previe
                 CameraUtils.setCameraDisplayOrientation(mActivity, cameraId, mCamera);
                 Log.i(TAG, "openCamera. facing: " + (isFront ? "front" : "back") + ", orientation:"
                         + mCameraOrientation + ", previewWidth:" + mCameraWidth + ", previewHeight:"
-                        + mCameraHeight + " exposureCompensation:" + mExposureCompensation
-                        + ", thread:" + Thread.currentThread().getName());
+                        + mCameraHeight + ", thread:" + Thread.currentThread().getName());
 
                 Camera.Parameters parameters = mCamera.getParameters();
                 CameraUtils.setFocusModes(parameters);
@@ -83,8 +80,6 @@ public class Camera1Renderer extends BaseCameraRenderer implements Camera.Previe
                 mCameraWidth = size[0];
                 mCameraHeight = size[1];
                 parameters.setPreviewFormat(ImageFormat.NV21);
-                CameraUtils.setVideoStabilization(parameters);
-                CameraUtils.setExposureCompensation(mCamera, mExposureCompensation);
                 CameraUtils.setParameters(mCamera, parameters);
                 mOnRendererStatusListener.onCameraOpened(mCameraWidth, mCameraHeight);
 
@@ -195,22 +190,6 @@ public class Camera1Renderer extends BaseCameraRenderer implements Camera.Previe
                 mIsStopPreview = false;
             }
         });
-    }
-
-    @Override
-    public void handleFocus(float rawX, float rawY, int areaSize) {
-        CameraUtils.handleFocusMetering(mCamera, rawX, rawY, mViewWidth, mViewHeight, mCameraWidth, mCameraHeight, areaSize, mCameraFacing);
-    }
-
-    @Override
-    public float getExposureCompensation() {
-        return mExposureCompensation;
-    }
-
-    @Override
-    public void setExposureCompensation(float value) {
-        mExposureCompensation = value;
-        CameraUtils.setExposureCompensation(mCamera, value);
     }
 
 }

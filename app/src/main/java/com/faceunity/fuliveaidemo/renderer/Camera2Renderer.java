@@ -15,7 +15,6 @@ import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
-import android.hardware.camera2.params.MeteringRectangle;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
@@ -41,6 +40,8 @@ import java.util.List;
 /**
  * 针对 Camera2 API 的渲染封装
  * refers https://github.com/Shouheng88/CameraX
+ *
+ * **注意：** 未经过兼容性测试，不推荐在生产环境使用
  *
  * @author Richie on 2019.08.19
  */
@@ -258,82 +259,6 @@ public class Camera2Renderer extends BaseCameraRenderer implements ImageReader.O
         } catch (Exception e) {
             Log.e(TAG, "startPreview: ", e);
             mOnRendererStatusListener.onCameraError(mActivity.getString(R.string.camera_preview_failed));
-        }
-    }
-
-    // see https://stackoverflow.com/questions/41649691/android-camera2-api-touch-to-focus-example
-    @Override
-    public void handleFocus(float rawX, float rawY, int areaSize) {
-        if (mCameraCaptureSession == null) {
-            return;
-        }
-        if (!isMeteringAreaAFSupported()) {
-            Log.e(TAG, "handleFocus not supported");
-            return;
-        }
-
-        CameraCharacteristics cameraCharacteristics = getCurrentCameraInfo();
-        final Rect sensorArraySize = cameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
-        //here I just flip x,y, but this needs to correspond with the sensor orientation (via SENSOR_ORIENTATION)
-        final int y = (int) ((rawX / mViewWidth) * (float) sensorArraySize.height());
-        final int x = (int) ((rawY / mViewHeight) * (float) sensorArraySize.width());
-        final int halfTouchWidth = areaSize / 2;
-        final int halfTouchHeight = areaSize / 2;
-        MeteringRectangle focusAreaTouch = new MeteringRectangle(Math.max(x - halfTouchWidth, 0),
-                Math.max(y - halfTouchHeight, 0),
-                halfTouchWidth * 2,
-                halfTouchHeight * 2,
-                MeteringRectangle.METERING_WEIGHT_MAX - 1);
-
-        try {
-            mCameraCaptureSession.stopRepeating();
-            mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
-            mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
-            MeteringRectangle[] meteringRectangles = new MeteringRectangle[]{focusAreaTouch};
-            mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, meteringRectangles);
-            mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
-            mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
-            mCameraCaptureSession.setRepeatingRequest(mCaptureRequestBuilder.build(), mCaptureCallback, mBackgroundHandler);
-        } catch (CameraAccessException e) {
-            Log.e(TAG, "setExposureCompensation: ", e);
-        }
-    }
-
-    @Override
-    public float getExposureCompensation() {
-        CameraCharacteristics cameraCharacteristics = getCurrentCameraInfo();
-        Range<Integer> range = cameraCharacteristics.get(CameraCharacteristics.CONTROL_AE_COMPENSATION_RANGE);
-        int min = -1;
-        int max = 1;
-        if (range != null) {
-            min = range.getLower();
-            max = range.getUpper();
-        }
-        Integer progressI = mCaptureRequestBuilder.get(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION);
-        int progress = 0;
-        if (progressI != null) {
-            progress = progressI;
-        }
-        return (float) (progress - min) / (max - min);
-    }
-
-    @Override
-    public void setExposureCompensation(float value) {
-        if (mCameraCaptureSession == null) {
-            return;
-        }
-        CameraCharacteristics cameraCharacteristics = getCurrentCameraInfo();
-        Range<Integer> range = cameraCharacteristics.get(CameraCharacteristics.CONTROL_AE_COMPENSATION_RANGE);
-        if (range != null) {
-            int min = range.getLower();
-            int max = range.getUpper();
-            int val = (int) (value * (max - min) + min);
-            mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, val);
-            try {
-                mCameraCaptureSession.setRepeatingRequest(mCaptureRequestBuilder.build(), mCaptureCallback, mBackgroundHandler);
-            } catch (CameraAccessException e) {
-                Log.e(TAG, "setExposureCompensation: ", e);
-            }
         }
     }
 

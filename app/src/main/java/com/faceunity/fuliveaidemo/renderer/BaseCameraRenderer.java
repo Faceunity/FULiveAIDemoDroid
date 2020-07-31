@@ -61,7 +61,6 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
     protected boolean mIsPreviewing;
     private ProgramTextureOES mProgramTextureOES;
     private ProgramTexture2d mProgramTexture2d;
-    private float[] mLandmarksData;
     protected int m2DTexId;
     protected OnCameraRendererListener mOnRendererStatusListener;
     private int mSmallViewportWidth;
@@ -290,27 +289,6 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
 
     public int getViewHeight() {
         return mViewHeight;
-    }
-
-    public void handleFocus(float rawX, float rawY, int areaSize) {
-
-    }
-
-    public float getExposureCompensation() {
-        return 0;
-    }
-
-    public void setExposureCompensation(float value) {
-
-    }
-
-    public void setLandmarksDataArray(float[][] landmarksDataArray) {
-        if (mLandmarksData == null || mLandmarksData.length != landmarksDataArray[0].length * landmarksDataArray.length) {
-            mLandmarksData = new float[landmarksDataArray[0].length * landmarksDataArray.length];
-        }
-        for (int i = 0; i < landmarksDataArray.length; i++) {
-            System.arraycopy(landmarksDataArray[i], 0, mLandmarksData, i * landmarksDataArray[i].length, landmarksDataArray[i].length);
-        }
     }
 
     protected void initCameraInfo() {
