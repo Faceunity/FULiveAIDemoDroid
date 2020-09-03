@@ -403,10 +403,8 @@ public class FURenderer {
                         faceunity.fuItemSetParam(controllerItem, "close_face_capture", 1.0);
                         // 关闭 DDE
                         faceunity.fuItemSetParam(controllerItem, "is_close_dde", 1.0);
-                        // 开启身体追踪
-                        faceunity.fuItemSetParam(controllerItem, "use_human_processor", 1.0);
                         // 进入身体追踪模式
-                        faceunity.fuItemSetParam(controllerItem, "enter_human_pose_track_mode", 1.0);
+                        faceunity.fuItemSetParam(controllerItem, "enable_human_processor", 1.0);
                         int[] items = new int[2];
                         items[0] = controllerItem;
                         items[1] = fxaaItem;
@@ -844,7 +842,7 @@ public class FURenderer {
     private void destroyControllerRelated() {
         if (mControllerBoundItems != null && mControllerBoundItems[0] > 0) {
             int controllerItem = mItemsArray[0];
-            faceunity.fuItemSetParam(controllerItem, "quit_human_pose_track_mode", 1.0);
+            faceunity.fuItemSetParam(controllerItem, "enable_human_processor", 0.0);
             int[] controllerBoundItems = validateItems(mControllerBoundItems);
             Log.d(TAG, "destroyControllerRelated: unbind " + Arrays.toString(controllerBoundItems));
             faceunity.fuUnBindItems(controllerItem, controllerBoundItems);
