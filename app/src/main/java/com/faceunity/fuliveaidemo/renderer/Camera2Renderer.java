@@ -118,7 +118,9 @@ public class Camera2Renderer extends BaseCameraRenderer implements ImageReader.O
         if (ActivityCompat.checkSelfPermission(mActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             throw new RuntimeException("Camera Permission Denied");
         }
-
+        if (mCameraDevice != null) {
+            return;
+        }
         try {
             String cameraId = cameraFacing == FACE_FRONT ? mFrontCameraId : mBackCameraId;
             CameraCharacteristics cameraCharacteristics = mCameraManager.getCameraCharacteristics(cameraId);
@@ -211,11 +213,11 @@ public class Camera2Renderer extends BaseCameraRenderer implements ImageReader.O
 
     @Override
     protected void startPreview() {
+        Log.d(TAG, "startPreview. cameraTexId:" + mCameraTexId + ", cameraDevice:" + mCameraDevice);
         if (mCameraTexId <= 0 || mCameraDevice == null || mIsPreviewing) {
             return;
         }
         mIsPreviewing = true;
-        Log.i(TAG, "startPreview. cameraTexId:" + mCameraTexId + ", cameraDevice:" + mCameraDevice);
 
         mSurfaceTexture = new SurfaceTexture(mCameraTexId);
         mSurfaceTexture.setDefaultBufferSize(mCameraWidth, mCameraHeight);

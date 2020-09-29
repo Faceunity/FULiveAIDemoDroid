@@ -9,10 +9,10 @@ import com.faceunity.fuliveaidemo.R;
 import com.faceunity.fuliveaidemo.gles.core.GlUtil;
 import com.faceunity.fuliveaidemo.renderer.OnVideoRendererListener;
 import com.faceunity.fuliveaidemo.renderer.VideoRenderer;
-import com.faceunity.fuliveaidemo.util.LogUtils;
 import com.faceunity.fuliveaidemo.util.ToastUtil;
 import com.faceunity.fuliveaidemo.util.VideoRecorder;
 import com.faceunity.nama.FURenderer;
+import com.faceunity.nama.utils.LogUtils;
 
 /**
  * @author Richie on 2020.06.19
@@ -46,15 +46,14 @@ public class VideoActivity extends BaseGlActivity implements OnVideoRendererList
     @Override
     protected void initFuRenderer() {
         mFURenderer = new FURenderer.Builder(this)
-                .setInputTextureType(FURenderer.INPUT_EXTERNAL_OES_TEXTURE)
-                .setOnTrackStatusChangedListener(this)
+                .setInputTextureType(FURenderer.INPUT_TEXTURE_EXTERNAL_OES)
                 .build();
     }
 
     @Override
     protected void initGlRenderer() {
         String videoPath = getIntent().getStringExtra(VIDEO_PATH);
-        LogUtils.d(videoPath);
+        LogUtils.debug(TAG, "videoPath: %s", videoPath);
         mVideoRenderer = new VideoRenderer(getLifecycle(), videoPath, mGlSurfaceView, this);
         mVideoRenderer.setOnMediaEventListener(this);
 

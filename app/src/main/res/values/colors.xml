@@ -28,6 +28,7 @@
     <color name="bg_config_item_selected">#176C52FF</color>
     <color name="bg_config_item_disable">#FFF2F3F5</color>
     <color name="bg_toast">#B3111226</color>
+    <color name="bg_float_view">#80111226</color>
     <color name="bg_gesture_normal">#FF33334D</color>
     <color name="bg_loading_dialog">#B0111216</color>
     <color name="white">#FFFFFFFF</color>

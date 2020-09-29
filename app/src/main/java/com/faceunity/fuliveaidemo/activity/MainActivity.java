@@ -15,11 +15,11 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.faceunity.fuliveaidemo.R;
 import com.faceunity.fuliveaidemo.util.FileUtils;
-import com.faceunity.fuliveaidemo.util.LogUtils;
 import com.faceunity.fuliveaidemo.util.PermissionUtil;
 import com.faceunity.fuliveaidemo.util.ScreenUtils;
 import com.faceunity.fuliveaidemo.util.ToastUtil;
 import com.faceunity.fuliveaidemo.util.UriUtil;
+import com.faceunity.nama.utils.LogUtils;
 
 import java.io.File;
 
@@ -27,6 +27,7 @@ import java.io.File;
  * @author Richie on 2020.05.21
  */
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
     private static final int IMAGE_REQUEST_CODE_PHOTO = 735;
     private String mPhotoPath;
 
@@ -102,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        LogUtils.d("onActivityResult. intent:" + (data != null ? data.toUri(0) : ""));
+        LogUtils.debug(TAG, "onActivityResult. intent: %s", data != null ? data.toUri(0) : "");
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode != RESULT_OK || requestCode != IMAGE_REQUEST_CODE_PHOTO || data == null) {
             return;

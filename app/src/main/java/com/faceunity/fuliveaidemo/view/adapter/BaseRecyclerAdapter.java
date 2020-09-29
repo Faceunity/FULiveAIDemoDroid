@@ -17,6 +17,7 @@ import androidx.annotation.IntRange;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.faceunity.fuliveaidemo.view.OnMultiClickListener;
@@ -151,34 +152,80 @@ public abstract class BaseRecyclerAdapter<T> extends RecyclerView.Adapter<BaseRe
     }
 
     /**
-     * 设置某个选项选中
-     *
-     * @param data
-     */
-    public void setItemSelected(@NonNull T data) {
-        int lastSelected = mLastSelected;
-        mLastSelected = indexOf(data);
-        if (mLastSelected >= 0) {
-            mSelectedItems.put(mLastSelected, data);
-            notifyItemChanged(mLastSelected);
-        }
-        if (lastSelected != mLastSelected) {
-            mSelectedItems.remove(lastSelected);
-        }
-        if (lastSelected >= 0) {
-            notifyItemChanged(lastSelected);
-        }
-    }
-
-    /**
-     * 设置某个选项选中
+     * 设置某个选项选中，适用于单选场景
      *
      * @param pos
      */
     public void setItemSelected(@IntRange(from = 0) int pos) {
         if (isValidPosition(pos)) {
-            setItemSelected(mData.get(pos));
+            T data = mData.get(pos);
+            mSelectedItems.put(pos, data);
+            notifyItemChanged(pos);
+            int lastSelected = mLastSelected;
+            if (lastSelected != pos) {
+                mSelectedItems.remove(lastSelected);
+            }
+            if (lastSelected >= 0) {
+                notifyItemChanged(lastSelected);
+            }
+            mLastSelected = pos;
         }
+    }
+
+    /**
+     * 设置某个选项选中，适用于多选场景
+     *
+     * @param pos
+     */
+    public void setItemSelectedMulti(@IntRange(from = 0) int pos) {
+        if (isValidPosition(pos)) {
+            T data = mData.get(pos);
+            mSelectedItems.put(pos, data);
+            notifyItemChanged(pos);
+        }
+    }
+
+    /**
+     * 设置某个选项选中，适用于单选场景
+     *
+     * @param data
+     */
+    public void setItemSelected(@NonNull T data) {
+        int pos = indexOf(data);
+        if (pos >= 0) {
+            mSelectedItems.put(pos, data);
+            notifyItemChanged(pos);
+        }
+        int lastSelected = mLastSelected;
+        if (lastSelected != pos) {
+            mSelectedItems.remove(lastSelected);
+        }
+        if (lastSelected >= 0) {
+            notifyItemChanged(lastSelected);
+        }
+        mLastSelected = pos;
+    }
+
+    /**
+     * 设置某个选项不选中，用于多选的场景
+     *
+     * @param pos
+     */
+    public void clearItemSelected(@IntRange(from = 0) int pos) {
+        if (isValidPosition(pos)) {
+            mSelectedItems.remove(pos);
+            notifyItemChanged(pos);
+        }
+    }
+
+    /**
+     * 设置某个选项不选中，用于多选的场景
+     *
+     * @param data
+     */
+    public void clearItemSelected(@NonNull T data) {
+        int index = indexOf(data);
+        clearItemSelected(index);
     }
 
     /**
@@ -455,6 +502,17 @@ public abstract class BaseRecyclerAdapter<T> extends RecyclerView.Adapter<BaseRe
             View view = getViewById(id);
             if (view instanceof TextView) {
                 ((TextView) view).setText(text);
+            }
+            return this;
+        }
+
+        /**
+         * 设置文字
+         */
+        public BaseViewHolder setText(@IdRes int id, @StringRes int strId) {
+            View view = getViewById(id);
+            if (view instanceof TextView) {
+                ((TextView) view).setText(strId);
             }
             return this;
         }

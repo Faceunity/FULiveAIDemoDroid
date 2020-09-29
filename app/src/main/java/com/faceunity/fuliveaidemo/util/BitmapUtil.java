@@ -7,12 +7,12 @@ import android.graphics.Matrix;
 import android.graphics.Point;
 import android.media.ExifInterface;
 import android.opengl.GLES20;
-import android.os.AsyncTask;
 import android.util.Log;
 
 import com.faceunity.fuliveaidemo.gles.ProgramTexture2d;
 import com.faceunity.fuliveaidemo.gles.ProgramTextureOES;
 import com.faceunity.fuliveaidemo.gles.core.GlUtil;
+import com.faceunity.nama.utils.ThreadHelper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -72,7 +72,7 @@ public final class BitmapUtil {
         GLES20.glDeleteFramebuffers(1, frameBuffers, 0);
 
         // ref: https://www.programcreek.com/java-api-examples/?class=android.opengl.GLES20&method=glReadPixels
-        AsyncTask.execute(new Runnable() {
+        ThreadHelper.getInstance().execute(new Runnable() {
             @Override
             public void run() {
                 Bitmap bmp = Bitmap.createBitmap(texWidth, texHeight, Bitmap.Config.ARGB_8888);

@@ -43,7 +43,7 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
     protected int mViewWidth;
     protected int mViewHeight;
     protected boolean mIsStopPreview;
-    protected int mCameraFacing = FACE_BACK;
+    protected int mCameraFacing = FACE_FRONT;
     protected int mCameraWidth = DEFAULT_PREVIEW_WIDTH;
     protected int mCameraHeight = DEFAULT_PREVIEW_HEIGHT;
     protected int mCameraTexId;
@@ -100,6 +100,7 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
         mBackgroundHandler.post(new Runnable() {
             @Override
             public void run() {
+                openCamera(mCameraFacing);
                 startPreview();
             }
         });
@@ -120,12 +121,6 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
         mViewHeight = height;
         mSmallViewportX = width - mSmallViewportWidth - mSmallViewportHorizontalPadding;
         mSmallViewportY = mSmallViewportBottomPadding;
-        mBackgroundHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                startPreview();
-            }
-        });
         mOnRendererStatusListener.onSurfaceChanged(width, height);
     }
 
@@ -196,7 +191,7 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
             }
         });
         try {
-            countDownLatch.await(1000, TimeUnit.MILLISECONDS);
+            countDownLatch.await(500, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             // ignored
         }
@@ -289,6 +284,10 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
 
     public int getViewHeight() {
         return mViewHeight;
+    }
+
+    public int getCameraFacing() {
+        return mCameraFacing;
     }
 
     protected void initCameraInfo() {

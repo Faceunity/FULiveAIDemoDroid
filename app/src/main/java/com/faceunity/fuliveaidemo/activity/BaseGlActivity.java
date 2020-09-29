@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
 
@@ -29,22 +30,28 @@ import com.faceunity.fuliveaidemo.view.ConfigFragment;
 import com.faceunity.fuliveaidemo.view.OnMultiClickListener;
 import com.faceunity.fuliveaidemo.view.adapter.BaseRecyclerAdapter;
 import com.faceunity.fuliveaidemo.view.adapter.SpaceItemDecoration;
+import com.faceunity.nama.Effect;
 import com.faceunity.nama.FURenderer;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author Richie on 2020.05.21
  */
 public abstract class BaseGlActivity extends AppCompatActivity implements PhotoTaker.OnPictureTakeListener,
-        OnRendererListener, FURenderer.OnTrackStatusChangedListener {
+        OnRendererListener {
     private static final String TAG = "BaseGlActivity";
-    public static final int RESOURCE_TYPE_GESTURE = 421;
-    public static final int RESOURCE_TYPE_ACTION = 230;
-    public static final int RESOURCE_TYPE_NONE = -1;
+    public static final int RECOGNITION_TYPE_GESTURE = 421;
+    public static final int RECOGNITION_TYPE_ACTION = 230;
+    public static final int RECOGNITION_TYPE_NONE = -1;
+    //    连续三帧检测到才认为成功
+    private static final int FACE_DETECT_OK_THRESHOLD = 3;
+
     private ConfigFragment mConfigFragment;
     private View mViewMask;
     protected TextView mTvTrackStatus;
@@ -52,32 +59,66 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     protected PhotoTaker mPhotoTaker;
     protected ViewClickListener mViewClickListener;
     protected FURenderer mFURenderer;
-    private RecyclerView mRvRecognize;
-    private RecognizeAdapter mRecognizeAdapter;
-    private List<RecognizeListData> mActionResourceList;
-    private List<RecognizeListData> mGestureResourceList;
-    private int mRecognizeIndex = -1;
-    private int mRecognizeCount;
-    private int mResourceListType = RESOURCE_TYPE_NONE;
+    private RecyclerView mRvTongueTrack;
+    private TongueTrackAdapter mTongueTrackAdapter;
+    private RecyclerView mRvExpression;
+    private ExpressionAdapter mExpressionAdapter;
+    private RecyclerView mRvRecognition;
+    private RecognitionAdapter mRecognitionAdapter;
+    private List<RecognitionListData> mActionResourceList;
+    private List<RecognitionListData> mGestureResourceList;
+    private int mRecognitionIndex = -1;
+    private int mRecognitionCount;
+    private int mDetectTongueIndex = -1;
+    private int mDetectTongueCount;
+    private int mRecognitionType = RECOGNITION_TYPE_NONE;
+    private boolean mIsDetectTongue;
+    private boolean mIsDetectExpression;
+    private int[] mDetectExpressionTypes;
+    private int[] mDetectExpressionIndexes;
+    protected boolean mIsFlipX;
     private LifecycleHandler mLifecycleHandler;
-    private boolean mCallDestroyController;
-    private Runnable mUpdateRecyclerTask = new Runnable() {
+    private Effect mFaceLandmarksEffect;
+    private Effect mAiTypeEffect;
+    private Runnable mUpdateHumanRecyclerTask = new Runnable() {
         @Override
         public void run() {
             int gap = 0;
             int skip = 0;
-            if (mResourceListType == RESOURCE_TYPE_ACTION) {
+            if (mRecognitionType == RECOGNITION_TYPE_ACTION) {
                 gap = 6;
                 skip = 1;
-            } else if (mResourceListType == RESOURCE_TYPE_GESTURE) {
+            } else if (mRecognitionType == RECOGNITION_TYPE_GESTURE) {
                 gap = 5;
                 skip = 2;
             }
-            if (mRecognizeIndex >= 0) {
-                int index = mRecognizeIndex > gap ? mRecognizeIndex + skip : mRecognizeIndex;
-                mRecognizeAdapter.setItemSelected(index);
+            if (mRecognitionIndex >= 0) {
+                int index = mRecognitionIndex > gap ? mRecognitionIndex + skip : mRecognitionIndex;
+                mRecognitionAdapter.setItemSelected(index);
             } else {
-                mRecognizeAdapter.clearSingleItemSelected();
+                mRecognitionAdapter.clearSingleItemSelected();
+            }
+        }
+    };
+    private Runnable mUpdateExpressionRecyclerTask = new Runnable() {
+        @Override
+        public void run() {
+            mExpressionAdapter.clearMultiItemSelected();
+            for (int index : mDetectExpressionIndexes) {
+                if (index >= 0) {
+                    mExpressionAdapter.setItemSelectedMulti(index);
+                }
+            }
+        }
+    };
+    private Runnable mUpdateTongueRecyclerTask = new Runnable() {
+        @Override
+        public void run() {
+            int detectTongueIndex = mDetectTongueIndex;
+            if (detectTongueIndex >= 0) {
+                mTongueTrackAdapter.setItemSelected(detectTongueIndex);
+            } else {
+                mTongueTrackAdapter.clearSingleItemSelected();
             }
         }
     };
@@ -94,8 +135,10 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         mTvTrackStatus = findViewById(R.id.tv_track_status);
         mViewMask = findViewById(R.id.v_mask);
         mGlSurfaceView = findViewById(R.id.gl_surface);
-        mRvRecognize = findViewById(R.id.rv_gesture);
-        mRvRecognize.setTag(false);
+        mRvRecognition = findViewById(R.id.rv_recognition);
+        mRvRecognition.setTag(false);
+        mRvExpression = findViewById(R.id.rv_expression);
+        mRvTongueTrack = findViewById(R.id.rv_tongue_track);
 
         mPhotoTaker = new PhotoTaker();
         mPhotoTaker.setOnPictureTakeListener(this);
@@ -104,11 +147,22 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         initView();
         initGlRenderer();
         initFuRenderer();
+
+        Map<String, Object> paramMap = new HashMap<>(4);
+        paramMap.put(ConfigFragment.LANDMARKS_TYPE, FURenderer.FACE_LANDMARKS_239);
+        mFaceLandmarksEffect = new Effect(ConfigFragment.FACE_LANDMARKS_BUNDLE_PATH, getString(R.string.config_item_face_landmarks_75), Effect.TYPE_FACE, paramMap);
+        paramMap = new HashMap<>(4);
+        paramMap.put("aitype", FURenderer.TRACK_TYPE_FACE);
+        mAiTypeEffect = new Effect(ConfigFragment.FACE_EXPRESSION_BUNDLE_PATH, getString(R.string.config_item_face_expression), Effect.TYPE_FACE, paramMap);
     }
 
     @Override
     public void onSurfaceCreated() {
         mFURenderer.onSurfaceCreated();
+        if (mFaceLandmarksEffect != null) {
+            mFURenderer.selectEffect(mFaceLandmarksEffect);
+            mFURenderer.selectEffect(mAiTypeEffect);
+        }
     }
 
     @Override
@@ -119,38 +173,6 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     @Override
     public void onSurfaceDestroy() {
         mFURenderer.onSurfaceDestroyed();
-    }
-
-    @Override
-    public void onTrackStatusChanged(final int type, final int status) {
-//        LogUtils.d((type == FURenderer.TRACK_TYPE_FACE ? "face" : (type == FURenderer.TRACK_TYPE_HUMAN ? "human" : "gesture")), status);
-        // TODO: 2020/6/30 0030 超复杂
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (mConfigFragment != null) {
-                    int selectedTrackType = mConfigFragment.getSelectedTrackType();
-                    if (type == selectedTrackType) {
-                        boolean invisible = status > 0;
-                        mTvTrackStatus.setVisibility(invisible ? View.INVISIBLE : View.VISIBLE);
-                        int toastStringId = mConfigFragment.getToastStringId();
-                        if (!invisible) {
-                            if (toastStringId > 0) {
-                                mTvTrackStatus.setText(toastStringId);
-                            } else {
-                                mTvTrackStatus.setVisibility(View.INVISIBLE);
-                            }
-                        } else {
-                            mTvTrackStatus.setVisibility(View.INVISIBLE);
-                        }
-                    } else if (selectedTrackType == 0) {
-                        mTvTrackStatus.setVisibility(View.INVISIBLE);
-                    }
-                } else {
-                    mTvTrackStatus.setVisibility(View.INVISIBLE);
-                }
-            }
-        });
     }
 
     @Override
@@ -204,27 +226,152 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         return true;
     }
 
+    /**
+     * 1、使用人脸/人体/手势功能时，如未检测到人脸/人体/手势时显示对应提示语；
+     * 2、同时使用人脸人体或人脸手势功能时，如同时使用的两个功能都未检测到，而两个不同提示语无法同时显示在屏幕，则优先显示未检测到人脸的提示语。
+     */
+    protected void queryTrackStatus() {
+        int toastStrId = 0;
+        boolean invisible = true;
+        if (mConfigFragment != null) {
+            int selectedTrackType = mConfigFragment.getSelectedTrackType();
+            if (selectedTrackType == FURenderer.TRACK_TYPE_HUMAN) {
+                boolean hasHuman = mFURenderer.queryHumanTrackStatus() > 0;
+                boolean hasFace = mFURenderer.queryFaceTrackStatus() > 0;
+                invisible = hasHuman || hasFace;
+                if (!invisible) {
+                    toastStrId = mConfigFragment.getToastStringId();
+                }
+                if (hasFace && !hasHuman) {
+                    toastStrId = mConfigFragment.getToastStringId();
+                    if (toastStrId == R.string.track_status_no_human_full
+                            || toastStrId == R.string.track_status_no_human) {
+                        invisible = false;
+                    }
+                }
+            } else if (selectedTrackType == FURenderer.TRACK_TYPE_FACE) {
+                invisible = mFURenderer.queryFaceTrackStatus() > 0;
+                if (!invisible) {
+                    toastStrId = R.string.track_status_no_face;
+                }
+            }
+        } else {
+            invisible = mFURenderer.queryFaceTrackStatus() > 0;
+            if (!invisible) {
+                toastStrId = R.string.track_status_no_face;
+            }
+        }
+        final boolean visible = !invisible;
+        final int strId = toastStrId;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (visible) {
+                    mTvTrackStatus.setVisibility(View.VISIBLE);
+                    mTvTrackStatus.setText(strId);
+                } else {
+                    mTvTrackStatus.setVisibility(View.INVISIBLE);
+                }
+            }
+        });
+    }
+
+    protected void trackFace() {
+        if (mIsDetectTongue) {
+            int type = mFURenderer.detectFaceTongue();
+            int index = convertToTongueIndex(type, mIsFlipX);
+            if (mDetectTongueIndex == index) {
+                mDetectTongueCount++;
+            } else {
+                mDetectTongueCount = 0;
+            }
+            mDetectTongueIndex = index;
+            if (mDetectTongueCount >= FACE_DETECT_OK_THRESHOLD) {
+                mLifecycleHandler.post(mUpdateTongueRecyclerTask);
+            }
+        }
+
+        if (mIsDetectExpression) {
+            int[] expressionTypeResult = mDetectExpressionTypes;
+            mFURenderer.detectFaceExpression(expressionTypeResult);
+            for (int i = 0; i < expressionTypeResult.length; i++) {
+                mDetectExpressionIndexes[i] = convertToExpressionIndex(expressionTypeResult[i]);
+            }
+            mLifecycleHandler.post(mUpdateExpressionRecyclerTask);
+        }
+    }
+
+    private static int convertToTongueIndex(int type, boolean isFlipX) {
+        switch (type) {
+            case FURenderer.FuAiTongueType.FUAITONGUE_UP: {
+                return 0;
+            }
+            case FURenderer.FuAiTongueType.FUAITONGUE_DOWN: {
+                return 1;
+            }
+            case FURenderer.FuAiTongueType.FUAITONGUE_LEFT: {
+                return isFlipX ? 3 : 2;
+            }
+            case FURenderer.FuAiTongueType.FUAITONGUE_RIGHT: {
+                return isFlipX ? 2 : 3;
+            }
+            case FURenderer.FuAiTongueType.FUAITONGUE_LEFT_UP: {
+                return isFlipX ? 6 : 4;
+            }
+            case FURenderer.FuAiTongueType.FUAITONGUE_LEFT_DOWN: {
+                return isFlipX ? 7 : 5;
+            }
+            case FURenderer.FuAiTongueType.FUAITONGUE_RIGHT_UP: {
+                return isFlipX ? 4 : 6;
+            }
+            case FURenderer.FuAiTongueType.FUAITONGUE_RIGHT_DOWN: {
+                return isFlipX ? 5 : 7;
+            }
+            default:
+                return -1;
+        }
+    }
+
+    private static int convertToExpressionIndex(int type) {
+        switch (type) {
+            case FURenderer.FuAiExpressionType.FUAIEXPRESSION_SMILE: {
+                return 0;
+            }
+            case FURenderer.FuAiExpressionType.FUAIEXPRESSION_MOUTH_OPEN: {
+                return 1;
+            }
+            case FURenderer.FuAiExpressionType.FUAIEXPRESSION_EYE_BLINK: {
+                return 2;
+            }
+            case FURenderer.FuAiExpressionType.FUAIEXPRESSION_POUT: {
+                return 3;
+            }
+            default:
+                return -1;
+        }
+    }
+
     protected void trackHuman() {
-        if (mResourceListType == RESOURCE_TYPE_NONE) {
+        if (mRecognitionType == RECOGNITION_TYPE_NONE) {
             return;
         }
         int index = -1;
-        if (mResourceListType == RESOURCE_TYPE_ACTION) {
-            int type = mFURenderer.matchHumanAction();
+        if (mRecognitionType == RECOGNITION_TYPE_ACTION) {
+            int type = FURenderer.detectHumanAction();
             index = type;
-        } else if (mResourceListType == RESOURCE_TYPE_GESTURE) {
-            int type = mFURenderer.matchHumanGesture();
+        } else if (mRecognitionType == RECOGNITION_TYPE_GESTURE) {
+            int type = FURenderer.detectHumanGesture();
             index = convertToGestureIndex(type);
         }
-        if (mRecognizeIndex == index) {
-            mRecognizeCount++;
+        if (mRecognitionIndex == index) {
+            mRecognitionCount++;
         } else {
-            mRecognizeCount = 0;
+            mRecognitionCount = 0;
         }
-        mRecognizeIndex = index;
+        mRecognitionIndex = index;
         // 连续三帧检测到才认为成功
-        if (mRecognizeCount >= 3) {
-            mLifecycleHandler.post(mUpdateRecyclerTask);
+        if (mRecognitionCount >= 3) {
+            mLifecycleHandler.post(mUpdateHumanRecyclerTask);
         }
     }
 
@@ -277,12 +424,45 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         }
     }
 
-    public void changeRecyclerVisibility(int resourceListType, boolean isSelected) {
+    public void setTongueTrackRecyclerVisibility(boolean visible) {
+        mRvTongueTrack.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (mTongueTrackAdapter == null) {
+            List<Integer> list = initTongueList();
+            mTongueTrackAdapter = new TongueTrackAdapter(new ArrayList<>(list));
+            mTongueTrackAdapter.setCanManualClick(false);
+            ((SimpleItemAnimator) mRvTongueTrack.getItemAnimator()).setSupportsChangeAnimations(false);
+            mRvTongueTrack.setHasFixedSize(true);
+            RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+            mRvTongueTrack.setLayoutManager(layoutManager);
+            mRvTongueTrack.setAdapter(mTongueTrackAdapter);
+        }
+        mIsDetectTongue = visible;
+    }
+
+    public void setExpressionRecyclerVisibility(boolean visible) {
+        mRvExpression.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (mExpressionAdapter == null) {
+            List<Integer> list = initExpressionList();
+            mExpressionAdapter = new ExpressionAdapter(new ArrayList<>(list));
+            mExpressionAdapter.setCanManualClick(false);
+            mRvExpression.setHasFixedSize(true);
+            ((SimpleItemAnimator) mRvExpression.getItemAnimator()).setSupportsChangeAnimations(false);
+            RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+            mRvExpression.setLayoutManager(layoutManager);
+            mRvExpression.setAdapter(mExpressionAdapter);
+            int size = list.size();
+            mDetectExpressionTypes = new int[size];
+            mDetectExpressionIndexes = new int[size];
+        }
+        mIsDetectExpression = visible;
+    }
+
+    public void setRecognitionRecyclerVisibility(int resourceListType, boolean isSelected) {
         mFURenderer.resetTrackStatus();
         if (isSelected) {
-            mResourceListType = resourceListType;
+            mRecognitionType = resourceListType;
         } else {
-            mResourceListType = RESOURCE_TYPE_NONE;
+            mRecognitionType = RECOGNITION_TYPE_NONE;
         }
         View recordView = getRecordView();
         if (recordView != null) {
@@ -292,17 +472,17 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
             recordView.setLayoutParams(layoutParams);
         }
 
-        mRvRecognize.setVisibility(isSelected ? View.VISIBLE : View.GONE);
+        mRvRecognition.setVisibility(isSelected ? View.VISIBLE : View.GONE);
         if (!isSelected) {
             return;
         }
-        List<RecognizeListData> dataSet;
-        if (resourceListType == RESOURCE_TYPE_GESTURE) {
+        List<RecognitionListData> dataSet;
+        if (resourceListType == RECOGNITION_TYPE_GESTURE) {
             if (mGestureResourceList == null) {
                 mGestureResourceList = initGestureList();
             }
             dataSet = mGestureResourceList;
-        } else if (resourceListType == RESOURCE_TYPE_ACTION) {
+        } else if (resourceListType == RECOGNITION_TYPE_ACTION) {
             if (mActionResourceList == null) {
                 mActionResourceList = initActionList();
             }
@@ -310,17 +490,17 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         } else {
             dataSet = new ArrayList<>();
         }
-        if (mRecognizeAdapter == null) {
-            mRvRecognize.setHasFixedSize(true);
-            mRvRecognize.setLayoutManager(new GridLayoutManager(BaseGlActivity.this, 8));
-            ((SimpleItemAnimator) mRvRecognize.getItemAnimator()).setSupportsChangeAnimations(false);
+        if (mRecognitionAdapter == null) {
+            mRvRecognition.setHasFixedSize(true);
+            mRvRecognition.setLayoutManager(new GridLayoutManager(BaseGlActivity.this, 8));
+            ((SimpleItemAnimator) mRvRecognition.getItemAnimator()).setSupportsChangeAnimations(false);
             int spacePx = DensityUtils.dp2px(BaseGlActivity.this, 1.5f);
-            mRvRecognize.addItemDecoration(new SpaceItemDecoration(spacePx, spacePx));
-            mRecognizeAdapter = new RecognizeAdapter(new ArrayList<>(dataSet));
-            mRecognizeAdapter.setCanManualClick(false);
-            mRvRecognize.setAdapter(mRecognizeAdapter);
+            mRvRecognition.addItemDecoration(new SpaceItemDecoration(spacePx, spacePx));
+            mRecognitionAdapter = new RecognitionAdapter(new ArrayList<>(dataSet));
+            mRecognitionAdapter.setCanManualClick(false);
+            mRvRecognition.setAdapter(mRecognitionAdapter);
         } else {
-            mRecognizeAdapter.replaceAll(dataSet);
+            mRecognitionAdapter.replaceAll(dataSet);
         }
     }
 
@@ -366,72 +546,141 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         return mFURenderer;
     }
 
-    private List<RecognizeListData> initGestureList() {
-        List<RecognizeListData> gestureResourceList = new ArrayList<>(16);
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_gesture_icon_love));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_gesture_icon_one_handed));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_gesture_icon_hands));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_gesture_icon_clenched_fist));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_gesture_icon_hands_together));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_gesture_icon_hands_take_pictures));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_transparent, true));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_transparent, true));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_gesture_icon_one));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_gesture_icon_two));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_gesture_icon_three));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_gesture_icon_five));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_gesture_icon_six));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_gesture_icon_fist));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_gesture_icon_palm_up));
-        gestureResourceList.add(new RecognizeListData(R.drawable.demo_gesture_icon_thumb_up));
+    public Effect getFaceLandmarksEffect() {
+        return mFaceLandmarksEffect;
+    }
+
+    public void nullFaceLandmarksEffect() {
+        mFaceLandmarksEffect = null;
+    }
+
+    public Effect getAiTypeEffect() {
+        return mAiTypeEffect;
+    }
+
+    private List<RecognitionListData> initGestureList() {
+        List<RecognitionListData> gestureResourceList = new ArrayList<>(16);
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_love));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_one_handed));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_hands));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_clenched_fist));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_hands_together));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_hands_take_pictures));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_transparent, true));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_transparent, true));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_one));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_two));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_three));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_five));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_six));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_fist));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_palm_up));
+        gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_thumb_up));
         return Collections.unmodifiableList(gestureResourceList);
     }
 
-    private List<RecognizeListData> initActionList() {
-        List<RecognizeListData> actionResourceList = new ArrayList<>(16);
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_0));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_1));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_2));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_3));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_4));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_5));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_6));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_transparent, true));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_7));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_8));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_9));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_10));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_11));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_12));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_13));
-        actionResourceList.add(new RecognizeListData(R.drawable.demo_action_icon_14));
+    private List<RecognitionListData> initActionList() {
+        List<RecognitionListData> actionResourceList = new ArrayList<>(16);
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_0));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_1));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_2));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_3));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_4));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_5));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_6));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_transparent, true));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_7));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_8));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_9));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_10));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_11));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_12));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_13));
+        actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_14));
         return Collections.unmodifiableList(actionResourceList);
     }
 
-    private static class RecognizeAdapter extends BaseRecyclerAdapter<RecognizeListData> {
+    private List<Integer> initExpressionList() {
+        List<Integer> expressionList = new ArrayList<>(8);
+        expressionList.add(R.drawable.demo_expression_icon_smile);
+        expressionList.add(R.drawable.demo_expression_icon_open_mouth);
+        expressionList.add(R.drawable.demo_expression_icon_wink);
+        expressionList.add(R.drawable.demo_expression_icon_pouting);
+//        expressionList.add(R.drawable.demo_expression_icon_frown);
+        return Collections.unmodifiableList(expressionList);
+    }
 
-        RecognizeAdapter(@NonNull List<RecognizeListData> data) {
-            super(data, R.layout.rv_recognize);
+    private List<Integer> initTongueList() {
+        List<Integer> tongueList = new ArrayList<>(8);
+        tongueList.add(R.string.tongue_track_up);
+        tongueList.add(R.string.tongue_track_down);
+        tongueList.add(R.string.tongue_track_left);
+        tongueList.add(R.string.tongue_track_right);
+        tongueList.add(R.string.tongue_track_left_up);
+        tongueList.add(R.string.tongue_track_left_down);
+        tongueList.add(R.string.tongue_track_right_up);
+        tongueList.add(R.string.tongue_track_right_down);
+        return Collections.unmodifiableList(tongueList);
+    }
+
+    private static class TongueTrackAdapter extends BaseRecyclerAdapter<Integer> {
+
+        TongueTrackAdapter(@NonNull List<Integer> data) {
+            super(data, R.layout.rv_tongue_track);
         }
 
         @Override
-        protected void bindViewHolder(BaseViewHolder viewHolder, RecognizeListData item) {
-            viewHolder.setImageResource(R.id.iv_item_gesture, item.iconId);
-            viewHolder.setBackground(R.id.iv_item_gesture, item.transparent ? android.R.color.transparent : R.drawable.selector_gesture_item);
+        protected void bindViewHolder(BaseViewHolder viewHolder, Integer item) {
+            viewHolder.setText(R.id.tv_item_tongue_track, item);
+        }
+    }
+
+    private static class ExpressionAdapter extends BaseRecyclerAdapter<Integer> {
+
+        ExpressionAdapter(@NonNull List<Integer> data) {
+            super(data, R.layout.rv_expression);
+        }
+
+        @Override
+        protected void bindViewHolder(BaseViewHolder viewHolder, Integer item) {
+            int position = viewHolder.getAdapterPosition();
+            viewHolder.setImageResource(R.id.iv_item_expression, item)
+                    .setBackground(R.id.iv_item_expression, position == 0 ? R.drawable.selector_expression_item_first
+                            : position == getItemCount() - 1 ? R.drawable.selector_expression_item_last
+                            : R.drawable.selector_expression_item_mid);
+        }
+
+        @Override
+        protected int choiceMode() {
+            return MULTI_CHOICE_MODE;
         }
 
     }
 
-    private static class RecognizeListData {
+    private static class RecognitionAdapter extends BaseRecyclerAdapter<RecognitionListData> {
+
+        RecognitionAdapter(@NonNull List<RecognitionListData> data) {
+            super(data, R.layout.rv_recognition);
+        }
+
+        @Override
+        protected void bindViewHolder(BaseViewHolder viewHolder, RecognitionListData item) {
+            viewHolder.setImageResource(R.id.iv_item_recognition, item.iconId);
+            viewHolder.setBackground(R.id.iv_item_recognition, item.transparent ? android.R.color.transparent : R.drawable.selector_recognition_item);
+        }
+
+    }
+
+    private static class RecognitionListData {
         private int iconId;
         private boolean transparent;
 
-        RecognizeListData(int iconId, boolean transparent) {
+        RecognitionListData(int iconId, boolean transparent) {
             this.iconId = iconId;
             this.transparent = transparent;
         }
 
-        RecognizeListData(int iconId) {
+        RecognitionListData(int iconId) {
             this(iconId, false);
         }
     }
@@ -446,8 +695,7 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
                     FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
                     fragmentTransaction.setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_right);
                     if (mConfigFragment == null) {
-                        mConfigFragment = new ConfigFragment();
-                        mConfigFragment.initListData(BaseGlActivity.this, containHumanAvatar());
+                        mConfigFragment = ConfigFragment.newInstance(containHumanAvatar());
                         fragmentTransaction.add(R.id.fl_fragment_container, mConfigFragment, ConfigFragment.TAG);
                     } else {
                         fragmentTransaction.show(mConfigFragment);

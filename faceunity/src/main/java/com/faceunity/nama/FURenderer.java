@@ -6,14 +6,12 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-import android.text.TextUtils;
-import android.util.Log;
 
+import com.faceunity.nama.utils.BundleUtils;
+import com.faceunity.nama.utils.DeviceUtils;
+import com.faceunity.nama.utils.LogUtils;
 import com.faceunity.wrapper.faceunity;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -33,29 +31,41 @@ import java.util.Set;
 public class FURenderer {
     private static final String TAG = "FURenderer";
     /**
+     * 相机朝向，前置或后置
+     */
+    public static final int CAMERA_FACING_FRONT = Camera.CameraInfo.CAMERA_FACING_FRONT;
+    public static final int CAMERA_FACING_BACK = Camera.CameraInfo.CAMERA_FACING_BACK;
+
+    /**
      * 算法模型和图形道具文件夹
      */
     private static final String ASSETS_DIR_MODEL = "model/";
     private static final String ASSETS_DIR_GRAPHICS = "graphics/";
     private static final String ASSETS_DIR_PTA = "pta/";
     /**
-     * 输入的 texture 类型，OES 或 2D
+     * 输入的 texture 类型，OES 和 2D
      */
-    public static final int INPUT_EXTERNAL_OES_TEXTURE = faceunity.FU_ADM_FLAG_EXTERNAL_OES_TEXTURE;
-    public static final int INPUT_2D_TEXTURE = 0;
+    public static final int INPUT_TEXTURE_EXTERNAL_OES = faceunity.FU_ADM_FLAG_EXTERNAL_OES_TEXTURE;
+    public static final int INPUT_TEXTURE_2D = 0;
     /**
-     * 输入的 buffer 格式，NV21、I420 或 RGBA
+     * 输入的 buffer 格式，NV21、I420 和 RGBA
      */
-    public static final int INPUT_FORMAT_NV21 = faceunity.FU_FORMAT_NV21_BUFFER;
-    public static final int INPUT_FORMAT_I420 = faceunity.FU_FORMAT_I420_BUFFER;
-    public static final int INPUT_FORMAT_RGBA = faceunity.FU_FORMAT_RGBA_BUFFER;
+    public static final int INPUT_FORMAT_NV21_BUFFER = faceunity.FU_FORMAT_NV21_BUFFER;
+    public static final int INPUT_FORMAT_I420_BUFFER = faceunity.FU_FORMAT_I420_BUFFER;
+    public static final int INPUT_FORMAT_RGBA_BUFFER = faceunity.FU_FORMAT_RGBA_BUFFER;
 
     /**
-     * 算法检测类型
+     * 算法检测类型，人脸、人体和手势
      */
     public static final int TRACK_TYPE_FACE = faceunity.FUAITYPE_FACEPROCESSOR;
     public static final int TRACK_TYPE_HUMAN = faceunity.FUAITYPE_HUMAN_PROCESSOR;
     public static final int TRACK_TYPE_GESTURE = faceunity.FUAITYPE_HANDGESTURE;
+
+    /**
+     * 人脸点位类型，75 点 和 239 点
+     */
+    public static final int FACE_LANDMARKS_75 = faceunity.FUAITYPE_FACELANDMARKS75;
+    public static final int FACE_LANDMARKS_239 = faceunity.FUAITYPE_FACELANDMARKS239;
 
     /**
      * 渲染模式，普通道具使用 renderItemsEx2 接口，controller 使用 renderBundles 接口
@@ -63,7 +73,13 @@ public class FURenderer {
     public static final int RENDER_MODE_NORMAL = 1;
     public static final int RENDER_MODE_CONTROLLER = 2;
     /**
-     * 人体跟踪模式，全身或者半身
+     * 最大、最小人脸数量
+     */
+    public static final int MAX_FACE_COUNT = 8;
+    public static final int MIN_FACE_COUNT = 1;
+
+    /**
+     * 人体跟踪模式，全身和半身
      */
     public static final int HUMAN_TRACK_SCENE_FULL = 1;
     public static final int HUMAN_TRACK_SCENE_HALF = 0;
@@ -74,8 +90,6 @@ public class FURenderer {
             "anim_ok.bundle", "anim_one.bundle", "anim_palm.bundle", "anim_rock.bundle", "anim_six.bundle",
             "anim_thumb.bundle", "anim_two.bundle"};
 
-    /* 句柄数组长度 2 */
-    private static final int ITEMS_ARRAY_COUNT = 1;
     /* 存放贴纸句柄的数组 */
     private int[] mItemsArray;
     private final Context mContext;
@@ -84,15 +98,15 @@ public class FURenderer {
     /* 递增的帧 ID */
     private int mFrameId = 0;
     /* 贴纸道具 */
-    private Set<Effect> mEffectList = new HashSet<>();
+    private Set<Effect> mEffectList = new HashSet<>(8);
     /* 最大识别的人体数 */
     private int mMaxHumans = 1;
     /* 最大识别的人脸数 */
-    private int mMaxFaces = 1;
+    private int mMaxFaces = MAX_FACE_COUNT;
     /* 是否手动创建 EGLContext，默认不创建 */
     private boolean mIsCreateEGLContext = false;
     /* 输入图像的纹理类型，默认 2D */
-    private int mInputTextureType = INPUT_2D_TEXTURE;
+    private int mInputTextureType = INPUT_TEXTURE_2D;
     /* 输入图像的 buffer 类型，此项一般不用改 */
     private int mInputImageFormat = 0;
     /* 输入图像的方向，默认前置相机 270 */
@@ -102,65 +116,67 @@ public class FURenderer {
     /* 人脸识别方向，默认 1，通过 createRotationMode 方法获得 */
     private int mRotationMode = faceunity.FU_ROTATION_MODE_90;
     /* 相机前后方向，默认前置相机  */
-    private int mCameraType = Camera.CameraInfo.CAMERA_FACING_FRONT;
+    private int mCameraFacing = CAMERA_FACING_FRONT;
     /* 事件队列 */
     private final ArrayList<Runnable> mEventQueue = new ArrayList<>(16);
-    /* 事件队列操作锁 */
-    private final Object mLock = new Object();
     /* GL 线程 ID */
     private long mGlThreadId;
+    /* 渲染模式，默认道具 */
+    private int mRenderMode = RENDER_MODE_NORMAL;
+    /* controller 绑定的道具 */
+    private int[] mControllerBoundItems;
+    /* 人体跟随模式，默认全身 */
+    private int mHumanTrackScene = HUMAN_TRACK_SCENE_FULL;
+    /* 旋转图像使用 */
+    private faceunity.RotatedImage mRotatedImage = new faceunity.RotatedImage();
     /* 是否已经全局初始化，确保只初始化一次 */
     private static boolean sIsInited;
-
-    private int mRenderMode = RENDER_MODE_NORMAL;
-    private int[] mControllerBoundItems;
-    private int mHumanTrackScene = HUMAN_TRACK_SCENE_FULL;
-    private faceunity.RotatedImage mRotatedImage = new faceunity.RotatedImage();
+    /* 舌头、表情检测，欧拉角结果 */
+    private int[] mTongueDirection = new int[1];
+    private int[] mExpressionType = new int[1];
+    private float[] mRotationEuler = new float[3];
 
     /**
      * 初始化系统环境，加载底层数据，并进行网络鉴权。
      * 应用使用期间只需要初始化一次，无需释放数据。
-     * 不需要 GL 环境，但必须在SDK其他接口前调用，否则会引起应用崩溃。
-     *
-     * @param context
+     * fuSetup 函数需要 GL 环境，但必须在SDK其他接口前调用，否则会引起应用崩溃。
      */
-    public static void initFURenderer(Context context) {
+    public static void setup(Context context) {
         if (sIsInited) {
             return;
         }
-        // {trace:0, debug:1, info:2, warn:3, error:4, critical:4, off:6}
-        int logLevel = 6;
-        faceunity.fuSetLogLevel(logLevel);
-        Log.i(TAG, "initFURenderer setLogLevel: " + logLevel);
+        long startTime = System.currentTimeMillis();
+        faceunity.fuSetLogLevel(FuLogLevel.FU_LOG_LEVEL_WARN);
+        LogUtils.setLogLevel(LogUtils.DEBUG);
 
-        // 初始化高通 DSP
-        String path = context.getApplicationInfo().nativeLibraryDir;
-        faceunity.fuHexagonInitWithPath(path);
+        faceunity.fuCreateEGLContext();
+        LogUtils.info(TAG, "device info: {%s}", DeviceUtils.retrieveDeviceInfo(context));
+        LogUtils.info(TAG, "fu sdk version %s", faceunity.fuGetVersion());
+        faceunity.fuSetup(new byte[0], authpack.A());
+        faceunity.fuReleaseEGLContext();
+        boolean isInit = isLibInit();
+        sIsInited = isInit;
+        LogUtils.info(TAG, "fuSetup. isLibInit: %s", isInit);
 
-        // 获取 Nama SDK 版本信息
-        Log.e(TAG, "fu sdk version " + faceunity.fuGetVersion());
-        // v3 不再使用，第一个参数传空字节数组即可
-        int isSetup = faceunity.fuSetup(new byte[0], authpack.A());
-        Log.d(TAG, "fuSetup. isSetup: " + (isSetup == 0 ? "no" : "yes"));
-        sIsInited = isLibInit();
-        Log.d(TAG, "initFURenderer finish. isLibraryInit: " + (sIsInited ? "yes" : "no"));
-
-        loadAiModel(context, ASSETS_DIR_MODEL + "ai_face_processor.bundle", faceunity.FUAITYPE_FACEPROCESSOR);
-        loadAiModel(context, ASSETS_DIR_MODEL + "ai_human_processor.bundle", faceunity.FUAITYPE_HUMAN_PROCESSOR);
-        loadAiModel(context, ASSETS_DIR_MODEL + "ai_gesture.bundle", faceunity.FUAITYPE_HANDGESTURE);
+        BundleUtils.loadAiModel(context, ASSETS_DIR_MODEL + "ai_face_processor.bundle", faceunity.FUAITYPE_FACEPROCESSOR);
+        BundleUtils.loadAiModel(context, ASSETS_DIR_MODEL + "ai_human_processor.bundle", faceunity.FUAITYPE_HUMAN_PROCESSOR);
+        BundleUtils.loadAiModel(context, ASSETS_DIR_MODEL + "ai_hand_processor.bundle", faceunity.FUAITYPE_HANDGESTURE);
+        BundleUtils.loadTongueModel(context, ASSETS_DIR_GRAPHICS + "tongue.bundle");
+        LogUtils.debug(TAG, "setup cost %dms", (int) (System.currentTimeMillis() - startTime));
     }
 
     /**
      * 释放鉴权数据占用的内存。如需再次使用，需要调用 fuSetup
      */
-    public static void destroyLibData() {
-        releaseAiModel(faceunity.FUAITYPE_FACEPROCESSOR);
-        releaseAiModel(faceunity.FUAITYPE_HUMAN_PROCESSOR);
-        releaseAiModel(faceunity.FUAITYPE_HANDGESTURE);
+    public static void destroy() {
         if (sIsInited) {
+            BundleUtils.releaseAiModel(faceunity.FUAITYPE_FACEPROCESSOR);
+            BundleUtils.releaseAiModel(faceunity.FUAITYPE_HUMAN_PROCESSOR);
+            BundleUtils.releaseAiModel(faceunity.FUAITYPE_HANDGESTURE);
             faceunity.fuDestroyLibData();
-            sIsInited = isLibInit();
-            Log.d(TAG, "destroyLibData. isLibraryInit: " + (sIsInited ? "yes" : "no"));
+            boolean isInit = isLibInit();
+            sIsInited = isInit;
+            LogUtils.debug(TAG, "destroy. isLibInit: %s", isInit);
         }
     }
 
@@ -174,116 +190,80 @@ public class FURenderer {
     }
 
     /**
-     * 加载 AI 模型资源，一般在 onSurfaceCreated 方法调用，不需要 EGL Context，耗时操作，可以异步执行
+     * 获取 Nama SDK 版本号，例如 7_1_0_phy_5cadfa8_f92de5b
      *
-     * @param context
-     * @param bundlePath ai_model.bundle
-     * @param type       faceunity.FUAITYPE_XXX
+     * @return version
      */
-    private static void loadAiModel(Context context, String bundlePath, int type) {
-        byte[] buffer = readFile(context, bundlePath);
-        if (buffer != null) {
-            int isLoaded = faceunity.fuLoadAIModelFromPackage(buffer, type);
-            Log.d(TAG, "loadAiModel. type: " + type + ", isLoaded: " + (isLoaded == 1 ? "yes" : "no"));
-        }
-    }
-
-    /**
-     * 释放 AI 模型资源，一般在 onSurfaceDestroyed 方法调用，不需要 EGL Context，对应 loadAiModel 方法
-     *
-     * @param type
-     */
-    private static void releaseAiModel(int type) {
-        if (faceunity.fuIsAIModelLoaded(type) == 1) {
-            int isReleased = faceunity.fuReleaseAIModel(type);
-            Log.d(TAG, "releaseAiModel. type: " + type + ", isReleased: " + (isReleased == 1 ? "yes" : "no"));
-        }
-    }
-
-    /**
-     * 加载 bundle 道具，不需要 EGL Context，耗时操作，可以异步执行
-     *
-     * @param bundlePath bundle 文件路径
-     * @return 道具句柄，大于 0 表示加载成功
-     */
-    private static int loadItem(Context context, String bundlePath) {
-        int handle = 0;
-        if (!TextUtils.isEmpty(bundlePath)) {
-            byte[] buffer = readFile(context, bundlePath);
-            if (buffer != null) {
-                handle = faceunity.fuCreateItemFromPackage(buffer);
-            }
-        }
-        Log.d(TAG, "loadItem. bundlePath: " + bundlePath + ", itemHandle: " + handle);
-        return handle;
-    }
-
-    /**
-     * 从 assets 文件夹或者本地磁盘读文件，一般在 IO 线程调用
-     *
-     * @param context
-     * @param path
-     * @return
-     */
-    private static byte[] readFile(Context context, String path) {
-        InputStream is = null;
-        try {
-            is = context.getAssets().open(path);
-        } catch (IOException e1) {
-            Log.w(TAG, "readFile: e1", e1);
-            // open assets failed, then try sdcard
-            try {
-                is = new FileInputStream(path);
-            } catch (IOException e2) {
-                Log.w(TAG, "readFile: e2", e2);
-            }
-        }
-        if (is != null) {
-            try {
-                byte[] buffer = new byte[is.available()];
-                int length = is.read(buffer);
-                Log.v(TAG, "readFile. path: " + path + ", length: " + length + " Byte");
-                is.close();
-                return buffer;
-            } catch (IOException e3) {
-                Log.e(TAG, "readFile: e3", e3);
-            }
-        }
-        return null;
-    }
-
-    /**
-     * 获取相机方向
-     *
-     * @param cameraFacing
-     * @return
-     */
-    public static int getCameraOrientation(int cameraFacing) {
-        Camera.CameraInfo info = new Camera.CameraInfo();
-        int cameraId = -1;
-        int numCameras = Camera.getNumberOfCameras();
-        for (int i = 0; i < numCameras; i++) {
-            Camera.getCameraInfo(i, info);
-            if (info.facing == cameraFacing) {
-                cameraId = i;
-                break;
-            }
-        }
-        if (cameraId < 0) {
-            // no front camera, regard it as back camera
-            return 90;
-        } else {
-            return info.orientation;
-        }
-    }
-
-    /**
-     * 获取 Nama SDK 完整版本号，例如 6.7.0_tf_phy-f1e36a93-b9e3359-b5f220d
-     *
-     * @return full version
-     */
-    public static String getFuVersion() {
+    public static String getVersion() {
         return faceunity.fuGetVersion();
+    }
+
+    /**
+     * SDK 日志级别
+     */
+    public static final class FuLogLevel {
+        public static final int FU_LOG_LEVEL_TRACE = 0;
+        public static final int FU_LOG_LEVEL_DEBUG = 1;
+        public static final int FU_LOG_LEVEL_INFO = 2;
+        public static final int FU_LOG_LEVEL_WARN = 3;
+        public static final int FU_LOG_LEVEL_ERROR = 4;
+        public static final int FU_LOG_LEVEL_CRITICAL = 5;
+        public static final int FU_LOG_LEVEL_OFF = 6;
+    }
+
+    /**
+     * 手势识别结果
+     */
+    public static final class FuAiGestureType {
+        public static final int FUAIGESTURE_UNKNOWN = 0;
+        public static final int FUAIGESTURE_THUMB = 1;
+        public static final int FUAIGESTURE_KORHEART = 2;
+        public static final int FUAIGESTURE_SIX = 3;
+        public static final int FUAIGESTURE_FIST = 4;
+        public static final int FUAIGESTURE_PALM = 5;
+        public static final int FUAIGESTURE_ONE = 6;
+        public static final int FUAIGESTURE_TWO = 7;
+        public static final int FUAIGESTURE_OK = 8;
+        public static final int FUAIGESTURE_ROCK = 9;
+        public static final int FUAIGESTURE_CROSS = 10;
+        public static final int FUAIGESTURE_HOLD = 11;
+        public static final int FUAIGESTURE_GREET = 12;
+        public static final int FUAIGESTURE_PHOTO = 13;
+        public static final int FUAIGESTURE_HEART = 14;
+        public static final int FUAIGESTURE_MERGE = 15;
+        public static final int FUAIGESTURE_EIGHT = 16;
+        public static final int FUAIGESTURE_HALFFIST = 17;
+        public static final int FUAIGESTURE_GUN = 18;
+    }
+
+    /**
+     * 舌头检测结果
+     */
+    public static final class FuAiTongueType {
+        public static final int FUAITONGUE_UNKNOWN = 0;
+        public static final int FUAITONGUE_UP = 1 << 1;
+        public static final int FUAITONGUE_DOWN = 1 << 2;
+        public static final int FUAITONGUE_LEFT = 1 << 3;
+        public static final int FUAITONGUE_RIGHT = 1 << 4;
+        public static final int FUAITONGUE_LEFT_UP = 1 << 5;
+        public static final int FUAITONGUE_LEFT_DOWN = 1 << 6;
+        public static final int FUAITONGUE_RIGHT_UP = 1 << 7;
+        public static final int FUAITONGUE_RIGHT_DOWN = 1 << 8;
+        public static final int FUAITONGUE_FORWARD = 1 << 9;
+        public static final int FUAITONGUE_NO_STRETCH = 1 << 10;
+    }
+
+    /**
+     * 表情识别结果
+     */
+    public static final class FuAiExpressionType {
+        public static final int FUAIEXPRESSION_UNKNOWN = 0;
+        public static final int FUAIEXPRESSION_SMILE = 1 << 1;
+        public static final int FUAIEXPRESSION_MOUTH_OPEN = 1 << 2;
+        public static final int FUAIEXPRESSION_EYE_BLINK = 1 << 3;
+        public static final int FUAIEXPRESSION_POUT = 1 << 4;
+        public static final int FUAIEXPRESSION_FROWN = 1 << 5;
+        public static final int FUAIEXPRESSION_PUFF_OUT_CHEEK = 1 << 6;
     }
 
     private FURenderer(Context context) {
@@ -294,16 +274,12 @@ public class FURenderer {
      * 创建及初始化 SDK 相关资源，必须在 GL 线程调用。如果没有 GL 环境，请把 mIsCreateEGLContext 设置为 true。
      */
     public void onSurfaceCreated() {
-        Log.e(TAG, "onSurfaceCreated");
+        LogUtils.info(TAG, "onSurfaceCreated");
         mGlThreadId = Thread.currentThread().getId();
-        HandlerThread handlerThread = new HandlerThread("FUItemHandlerThread");
+        HandlerThread handlerThread = new HandlerThread("FuNamaWorker");
         handlerThread.start();
         mFuItemHandler = new FUItemHandler(handlerThread.getLooper());
-        mFrameId = 0;
-        mItemsArray = new int[ITEMS_ARRAY_COUNT];
-        synchronized (mLock) {
-            mEventQueue.clear();
-        }
+        mItemsArray = new int[1];
         /*
          * 创建OpenGL环境，适用于没有 OpenGL 环境时。
          * 如果调用了fuCreateEGLContext，销毁时需要调用fuReleaseEGLContext
@@ -323,104 +299,31 @@ public class FURenderer {
             loadController(null);
         } else {
             for (Effect effect : mEffectList) {
-                mFuItemHandler.sendMessage(Message.obtain(mFuItemHandler, FUItemHandler.MSG_WHAT_LOAD_BUNDLE, effect));
+                Message.obtain(mFuItemHandler, FUItemHandler.MESSAGE_WHAT_LOAD_EFFECT, effect).sendToTarget();
             }
         }
     }
 
-    public void loadController(final Runnable callback) {
-        mFuItemHandler.post(new Runnable() {
+    /**
+     * 设置识别的最大人脸数
+     *
+     * @param maxFaces
+     */
+    public void setMaxFaces(final int maxFaces) {
+        mMaxFaces = maxFaces;
+        queueEvent(new Runnable() {
             @Override
             public void run() {
-                int[] defaultItems = new int[3];
-                final int controllerItem = loadItem(mContext, ASSETS_DIR_GRAPHICS + "controller.bundle");
-                if (controllerItem <= 0) {
-                    return;
-                }
-                final int controllerConfigItem = loadItem(mContext, ASSETS_DIR_PTA + "controller_config.bundle");
-                defaultItems[0] = controllerConfigItem;
-                if (controllerConfigItem > 0) {
-                    queueEvent(new Runnable() {
-                        @Override
-                        public void run() {
-                            faceunity.fuBindItems(controllerItem, new int[]{controllerConfigItem});
-                            Log.d(TAG, "run: controller bind config");
-                        }
-                    });
-                }
-                final int bgItem = loadItem(mContext, ASSETS_DIR_PTA + "default_bg.bundle");
-                defaultItems[1] = bgItem;
-                if (bgItem > 0) {
-                    queueEvent(new Runnable() {
-                        @Override
-                        public void run() {
-                            faceunity.fuBindItems(controllerItem, new int[]{bgItem});
-                            Log.d(TAG, "run: controller bind default bg");
-                        }
-                    });
-                }
-                final int fakeManItem = loadItem(mContext, ASSETS_DIR_PTA + "fakeman.bundle");
-                defaultItems[2] = fakeManItem;
-                if (fakeManItem > 0) {
-                    queueEvent(new Runnable() {
-                        @Override
-                        public void run() {
-                            faceunity.fuBindItems(controllerItem, new int[]{fakeManItem});
-                            Log.d(TAG, "run: controller bind fake man");
-                        }
-                    });
-                }
-                final int fxaaItem = loadItem(mContext, ASSETS_DIR_GRAPHICS + "fxaa.bundle");
-                int[] gestureItems = new int[GESTURE_BIND_BUNDLES.length];
-                for (int i = 0; i < GESTURE_BIND_BUNDLES.length; i++) {
-                    int item = loadItem(mContext, ASSETS_DIR_PTA + "gesture/" + GESTURE_BIND_BUNDLES[i]);
-                    gestureItems[i] = item;
-                }
-                final int[] validGestureItems = validateItems(gestureItems);
-                queueEvent(new Runnable() {
-                    @Override
-                    public void run() {
-                        faceunity.fuBindItems(controllerItem, validGestureItems);
-                        Log.d(TAG, "run: controller bind gesture");
-                    }
-                });
-                int[] validDefaultItems = validateItems(defaultItems);
-                int[] controllerBoundItems = new int[validDefaultItems.length + validGestureItems.length];
-                System.arraycopy(validDefaultItems, 0, controllerBoundItems, 0, validDefaultItems.length);
-                System.arraycopy(validGestureItems, 0, controllerBoundItems, validDefaultItems.length, validGestureItems.length);
-                mControllerBoundItems = controllerBoundItems;
-                Log.d(TAG, "run: controller all bind item " + Arrays.toString(controllerBoundItems));
-                queueEvent(new Runnable() {
-                    @Override
-                    public void run() {
-                        for (int item : mItemsArray) {
-                            if (item > 0) {
-                                faceunity.fuDestroyItem(item);
-                            }
-                        }
-                        Arrays.fill(mItemsArray, 0);
-                        // 关闭CNN面部追踪
-                        faceunity.fuItemSetParam(controllerItem, "close_face_capture", 1.0);
-                        // 关闭 DDE
-                        faceunity.fuItemSetParam(controllerItem, "is_close_dde", 1.0);
-                        // 进入身体追踪模式
-                        faceunity.fuItemSetParam(controllerItem, "enable_human_processor", 1.0);
-                        int[] items = new int[2];
-                        items[0] = controllerItem;
-                        items[1] = fxaaItem;
-                        mItemsArray = items;
-                        setHumanTrackScene(mHumanTrackScene);
-                        mRotationMode = faceunity.fuGetCurrentRotationMode();
-                        faceunity.fuSetDefaultRotationMode(0);
-                        mRenderMode = RENDER_MODE_CONTROLLER;
-                        resetTrackStatus();
-                        if (callback != null) {
-                            callback.run();
-                        }
-                    }
-                });
+                faceunity.fuSetMaxFaces(maxFaces);
+                LogUtils.info(TAG, "setMaxFaces: %s", maxFaces);
             }
         });
+    }
+
+    public void loadController(final Runnable callback) {
+        if (mFuItemHandler != null) {
+            Message.obtain(mFuItemHandler, FUItemHandler.MESSAGE_WHAT_LOAD_CONTROLLER, callback).sendToTarget();
+        }
     }
 
     public void destroyController(final Runnable callback) {
@@ -437,6 +340,9 @@ public class FURenderer {
                 faceunity.fuSetDefaultRotationMode(mRotationMode);
                 mRenderMode = RENDER_MODE_NORMAL;
                 resetTrackStatus();
+                for (Effect effect : mEffectList) {
+                    Message.obtain(mFuItemHandler, FUItemHandler.MESSAGE_WHAT_LOAD_EFFECT, effect).sendToTarget();
+                }
                 if (callback != null) {
                     callback.run();
                 }
@@ -445,7 +351,7 @@ public class FURenderer {
     }
 
     public void setHumanTrackScene(final int humanTrackScene) {
-        Log.d(TAG, "setHumanTrackScene() called with: humanTrackScene = [" + humanTrackScene + "]");
+        LogUtils.debug(TAG, "setHumanTrackScene() humanTrackScene: %d", humanTrackScene);
         mHumanTrackScene = humanTrackScene;
         queueEvent(new Runnable() {
             @Override
@@ -480,7 +386,7 @@ public class FURenderer {
     }
 
     private void rotateImage(byte[] img, int width, int height) {
-        boolean isFrontCam = mCameraType == Camera.CameraInfo.CAMERA_FACING_FRONT;
+        boolean isFrontCam = mCameraFacing == CAMERA_FACING_FRONT;
         //旋转角度
         int rotateMode = isFrontCam ? faceunity.FU_ROTATION_MODE_270 : faceunity.FU_ROTATION_MODE_90;
         //是否x镜像
@@ -493,7 +399,7 @@ public class FURenderer {
 
     public int drawFrame(byte[] img, int tex, int w, int h) {
         if (img == null || tex <= 0 || w <= 0 || h <= 0) {
-            Log.e(TAG, "onDrawFrame data is invalid");
+            LogUtils.error(TAG, "onDrawFrame data is invalid");
             return 0;
         }
         prepareDrawFrame();
@@ -517,41 +423,6 @@ public class FURenderer {
         return fuTex;
     }
 
-    public static class FuAiGestureType {
-        public static final int FUAIGESTURE_NO_HAND = -1;
-        public static final int FUAIGESTURE_UNKNOWN = 0;
-        public static final int FUAIGESTURE_THUMB = 1;
-        public static final int FUAIGESTURE_KORHEART = 2;
-        public static final int FUAIGESTURE_SIX = 3;
-        public static final int FUAIGESTURE_FIST = 4;
-        public static final int FUAIGESTURE_PALM = 5;
-        public static final int FUAIGESTURE_ONE = 6;
-        public static final int FUAIGESTURE_TWO = 7;
-        public static final int FUAIGESTURE_OK = 8;
-        public static final int FUAIGESTURE_ROCK = 9;
-        public static final int FUAIGESTURE_CROSS = 10;
-        public static final int FUAIGESTURE_HOLD = 11;
-        public static final int FUAIGESTURE_GREET = 12;
-        public static final int FUAIGESTURE_PHOTO = 13;
-        public static final int FUAIGESTURE_HEART = 14;
-        public static final int FUAIGESTURE_MERGE = 15;
-        public static final int FUAIGESTURE_EIGHT = 16;
-        public static final int FUAIGESTURE_HALFFIST = 17;
-        public static final int FUAIGESTURE_GUN = 18;
-    }
-
-    /**
-     * 人体手势查询与匹配
-     *
-     * @return
-     */
-    public int matchHumanGesture() {
-        if (faceunity.fuHandDetectorGetResultNumHands() > 0) {
-            return faceunity.fuHandDetectorGetResultGestureType(0);
-        }
-        return FuAiGestureType.FUAIGESTURE_NO_HAND;
-    }
-
     /**
      * 人体动作检测
      *
@@ -559,7 +430,11 @@ public class FURenderer {
      * @param width
      * @param height
      */
-    public void trackHumanAction(byte[] img, int width, int height, int format) {
+    public static void trackHumanAction(byte[] img, int width, int height, int format) {
+        if (img == null || width <= 0 || height <= 0) {
+            LogUtils.error(TAG, "trackHumanAction data is invalid");
+            return;
+        }
         track(img, width, height, faceunity.FUAITYPE_HUMAN_PROCESSOR_2D_DANCE, format);
     }
 
@@ -570,7 +445,11 @@ public class FURenderer {
      * @param width
      * @param height
      */
-    public void trackHumanGesture(byte[] img, int width, int height, int format) {
+    public static void trackHumanGesture(byte[] img, int width, int height, int format) {
+        if (img == null || width <= 0 || height <= 0) {
+            LogUtils.error(TAG, "trackHumanGesture data is invalid");
+            return;
+        }
         track(img, width, height, faceunity.FUAITYPE_HANDGESTURE, format);
     }
 
@@ -583,22 +462,115 @@ public class FURenderer {
      * @param aiType
      * @param format
      */
-    public void track(byte[] img, int width, int height, int aiType, int format) {
+    public static void track(byte[] img, int width, int height, int aiType, int format) {
         faceunity.fuSetTrackFaceAIType(aiType);
-        faceunity.fuTrackFace(img, width, height, format);
-        callTrackStatus();
+        faceunity.fuTrackFace(img, format, width, height);
     }
 
     /**
-     * 人体动作查询与匹配
+     * 检测人体手势类型
      *
      * @return
      */
-    public int matchHumanAction() {
+    public static int detectHumanGesture() {
+        if (faceunity.fuHandDetectorGetResultNumHands() > 0) {
+            return faceunity.fuHandDetectorGetResultGestureType(0);
+        }
+        return -1;
+    }
+
+    /**
+     * 检测人体动作类型
+     *
+     * @return
+     */
+    public static int detectHumanAction() {
         if (faceunity.fuHumanProcessorGetNumResults() > 0) {
             return faceunity.fuHumanProcessorGetResultActionType(0);
         }
         return -1;
+    }
+
+    /**
+     * 检测舌头方向
+     *
+     * @return
+     */
+    public int detectFaceTongue() {
+        if (faceunity.fuIsTracking() > 0) {
+            int[] tongueDirection = mTongueDirection;
+            faceunity.fuGetFaceInfo(0, "tongue_direction", tongueDirection);
+            return tongueDirection[0];
+        }
+        return -1;
+    }
+
+    /**
+     * 表情识别
+     *
+     * @param result
+     * @return
+     */
+    public void detectFaceExpression(int[] result) {
+        if (result == null || result.length < 4) {
+            return;
+        }
+        Arrays.fill(result, 0);
+        if (faceunity.fuIsTracking() > 0) {
+            int[] expressionType = mExpressionType;
+            faceunity.fuGetFaceInfo(0, "expression_type", expressionType);
+            int et = expressionType[0];
+            if (et > 0) {
+                if ((et & FuAiExpressionType.FUAIEXPRESSION_SMILE) != 0) {
+                    result[0] = FuAiExpressionType.FUAIEXPRESSION_SMILE;
+                }
+                if ((et & FuAiExpressionType.FUAIEXPRESSION_MOUTH_OPEN) != 0) {
+                    result[1] = FuAiExpressionType.FUAIEXPRESSION_MOUTH_OPEN;
+                }
+                if ((et & FuAiExpressionType.FUAIEXPRESSION_EYE_BLINK) != 0) {
+                    result[2] = FuAiExpressionType.FUAIEXPRESSION_EYE_BLINK;
+                }
+                if ((et & FuAiExpressionType.FUAIEXPRESSION_POUT) != 0) {
+                    result[3] = FuAiExpressionType.FUAIEXPRESSION_POUT;
+                }
+            }
+        }
+    }
+
+    /**
+     * 人脸旋转欧拉角，顺序是 pitch yaw roll
+     *
+     * @return
+     */
+    public float[] getFaceRotationEuler() {
+        float[] rotationEuler = mRotationEuler;
+        if (faceunity.fuIsTracking() > 0) {
+            faceunity.fuGetFaceInfo(0, "rotation_euler", rotationEuler);
+            for (int i = 0; i < rotationEuler.length; i++) {
+                rotationEuler[i] = (float) (rotationEuler[i] * 180 / Math.PI);
+            }
+        } else {
+            Arrays.fill(rotationEuler, 0F);
+        }
+        return rotationEuler;
+    }
+
+    /**
+     * 识别到的人脸数
+     *
+     * @return
+     */
+    public int queryFaceTrackStatus() {
+        return faceunity.fuIsTracking();
+    }
+
+    /**
+     * 识别到的人体数
+     *
+     * @return
+     */
+    public int queryHumanTrackStatus() {
+        return faceunity.fuHumanProcessorGetNumResults();
     }
 
     /**
@@ -611,7 +583,7 @@ public class FURenderer {
      */
     public int onDrawFrameSingleInput(int tex, int w, int h) {
         if (tex <= 0 || w <= 0 || h <= 0) {
-            Log.e(TAG, "onDrawFrame data is invalid");
+            LogUtils.error(TAG, "onDrawFrame data is invalid");
             return 0;
         }
         prepareDrawFrame();
@@ -640,7 +612,7 @@ public class FURenderer {
      */
     public int onDrawFrameSingleInput(int tex, int w, int h, byte[] readBackImg, int readBackW, int readBackH, int readBackFormat) {
         if (tex <= 0 || w <= 0 || h <= 0 || readBackImg == null || readBackW <= 0 || readBackH <= 0) {
-            Log.e(TAG, "onDrawFrame data is invalid");
+            LogUtils.error(TAG, "onDrawFrame data is invalid");
             return 0;
         }
         prepareDrawFrame();
@@ -649,13 +621,13 @@ public class FURenderer {
             mCallStartTime = System.nanoTime();
         }
         switch (readBackFormat) {
-            case INPUT_FORMAT_I420:
+            case INPUT_FORMAT_I420_BUFFER:
                 flags |= faceunity.FU_ADM_FLAG_I420_TEXTURE;
                 break;
-            case INPUT_FORMAT_RGBA:
+            case INPUT_FORMAT_RGBA_BUFFER:
                 flags |= faceunity.FU_ADM_FLAG_RGBA_BUFFER;
                 break;
-            case INPUT_FORMAT_NV21:
+            case INPUT_FORMAT_NV21_BUFFER:
             default:
                 flags |= faceunity.FU_ADM_FLAG_NV21_TEXTURE;
                 break;
@@ -679,7 +651,7 @@ public class FURenderer {
      */
     public int onDrawFrameSingleInput(byte[] img, int w, int h, int format) {
         if (img == null || w <= 0 || h <= 0) {
-            Log.e(TAG, "onDrawFrame data is invalid");
+            LogUtils.error(TAG, "onDrawFrame data is invalid");
             return 0;
         }
         prepareDrawFrame();
@@ -690,13 +662,13 @@ public class FURenderer {
         }
         int fuTex;
         switch (format) {
-            case INPUT_FORMAT_I420:
+            case INPUT_FORMAT_I420_BUFFER:
                 fuTex = faceunity.fuRenderToI420Image(img, w, h, mFrameId++, mItemsArray, flags);
                 break;
-            case INPUT_FORMAT_RGBA:
+            case INPUT_FORMAT_RGBA_BUFFER:
                 fuTex = faceunity.fuRenderToRgbaImage(img, w, h, mFrameId++, mItemsArray, flags);
                 break;
-            case INPUT_FORMAT_NV21:
+            case INPUT_FORMAT_NV21_BUFFER:
             default:
                 fuTex = faceunity.fuRenderToNV21Image(img, w, h, mFrameId++, mItemsArray, flags);
                 break;
@@ -721,7 +693,7 @@ public class FURenderer {
      */
     public int onDrawFrameSingleInput(byte[] img, int w, int h, byte[] readBackImg, int readBackW, int readBackH, int format) {
         if (img == null || w <= 0 || h <= 0 || readBackImg == null || readBackW <= 0 || readBackH <= 0) {
-            Log.e(TAG, "onDrawFrame data is invalid");
+            LogUtils.error(TAG, "onDrawFrame data is invalid");
             return 0;
         }
         prepareDrawFrame();
@@ -732,15 +704,15 @@ public class FURenderer {
         }
         int fuTex;
         switch (format) {
-            case INPUT_FORMAT_I420:
+            case INPUT_FORMAT_I420_BUFFER:
                 fuTex = faceunity.fuRenderToI420Image(img, w, h, mFrameId++, mItemsArray, flags,
                         readBackW, readBackH, readBackImg);
                 break;
-            case INPUT_FORMAT_RGBA:
+            case INPUT_FORMAT_RGBA_BUFFER:
                 fuTex = faceunity.fuRenderToRgbaImage(img, w, h, mFrameId++, mItemsArray, flags,
                         readBackW, readBackH, readBackImg);
                 break;
-            case INPUT_FORMAT_NV21:
+            case INPUT_FORMAT_NV21_BUFFER:
             default:
                 fuTex = faceunity.fuRenderToNV21Image(img, w, h, mFrameId++, mItemsArray, flags,
                         readBackW, readBackH, readBackImg);
@@ -764,7 +736,7 @@ public class FURenderer {
      */
     public int onDrawFrameDualInput(byte[] img, int tex, int w, int h) {
         if (img == null || tex <= 0 || w <= 0 || h <= 0) {
-            Log.e(TAG, "onDrawFrame data is invalid");
+            LogUtils.error(TAG, "onDrawFrame data is invalid");
             return 0;
         }
         prepareDrawFrame();
@@ -793,7 +765,7 @@ public class FURenderer {
      */
     public int onDrawFrameDualInput(byte[] img, int tex, int w, int h, byte[] readBackImg, int readBackW, int readBackH) {
         if (img == null || tex <= 0 || w <= 0 || h <= 0 || readBackImg == null || readBackW <= 0 || readBackH <= 0) {
-            Log.e(TAG, "onDrawFrame data is invalid");
+            LogUtils.error(TAG, "onDrawFrame data is invalid");
             return 0;
         }
         prepareDrawFrame();
@@ -813,13 +785,15 @@ public class FURenderer {
      * 销毁 SDK 相关资源，必须在 GL 线程调用。如果没有 GL 环境，请把 mIsCreateEGLContext 设置为 true。
      */
     public void onSurfaceDestroyed() {
-        Log.e(TAG, "onSurfaceDestroyed");
+        LogUtils.info(TAG, "onSurfaceDestroyed");
         if (mFuItemHandler != null) {
             mFuItemHandler.removeCallbacksAndMessages(null);
             mFuItemHandler.getLooper().quit();
+            mFuItemHandler = null;
         }
         mFrameId = 0;
-        synchronized (mLock) {
+        mGlThreadId = 0;
+        synchronized (this) {
             mEventQueue.clear();
         }
 
@@ -830,10 +804,14 @@ public class FURenderer {
             }
         }
         Arrays.fill(mItemsArray, 0);
+        for (Effect effect : mEffectList) {
+            effect.setHandle(0);
+        }
+        mItemsArray = null;
         faceunity.fuOnCameraChange();
-        faceunity.fuDestroyAllItems();
-        faceunity.fuOnDeviceLost();
+        faceunity.fuHumanProcessorReset();
         faceunity.fuDone();
+        faceunity.fuOnDeviceLost();
         if (mIsCreateEGLContext) {
             faceunity.fuReleaseEGLContext();
         }
@@ -844,7 +822,7 @@ public class FURenderer {
             int controllerItem = mItemsArray[0];
             faceunity.fuItemSetParam(controllerItem, "enable_human_processor", 0.0);
             int[] controllerBoundItems = validateItems(mControllerBoundItems);
-            Log.d(TAG, "destroyControllerRelated: unbind " + Arrays.toString(controllerBoundItems));
+            LogUtils.debug(TAG, "destroyControllerRelated: unbind %s", Arrays.toString(controllerBoundItems));
             faceunity.fuUnBindItems(controllerItem, controllerBoundItems);
             for (int i = controllerBoundItems.length - 1; i >= 0; i--) {
                 int ptaItem = controllerBoundItems[i];
@@ -863,18 +841,18 @@ public class FURenderer {
     private void prepareDrawFrame() {
         // 计算 FPS 和渲染时长
         benchmarkFPS();
-        callTrackStatus();
+//        callTrackStatus();
         // 获取内部错误信息，并调用回调接口
         int errorCode = faceunity.fuGetSystemError();
         if (errorCode != 0) {
             String errorMessage = faceunity.fuGetSystemErrorString(errorCode);
-            Log.e(TAG, "system error code: " + errorCode + ", error message: " + errorMessage);
+            LogUtils.error(TAG, "system error code: %d, error message: %s", errorCode, errorMessage);
             if (mOnSystemErrorListener != null) {
                 mOnSystemErrorListener.onSystemError(errorMessage);
             }
         }
 
-        synchronized (mLock) {
+        synchronized (this) {
             while (!mEventQueue.isEmpty()) {
                 mEventQueue.remove(0).run();
             }
@@ -887,19 +865,19 @@ public class FURenderer {
         // 获取人体是否识别
         int trackHumans = faceunity.fuHumanProcessorGetNumResults();
         // 获取手势是否识别
-        int trackGesture = faceunity.fuHandDetectorGetResultNumHands();
+//        int trackGesture = faceunity.fuHandDetectorGetResultNumHands();
         if (mOnTrackStatusChangedListener != null) {
-            if (mTrackFaceStatus != trackFace) {
-                mTrackFaceStatus = trackFace;
-                mOnTrackStatusChangedListener.onTrackStatusChanged(TRACK_TYPE_FACE, trackFace);
-            }
+//            if (mTrackGestureStatus != trackGesture) {
+//                mTrackGestureStatus = trackGesture;
+//                mOnTrackStatusChangedListener.onTrackStatusChanged(TRACK_TYPE_GESTURE, trackGesture);
+//            }
             if (mTrackHumanStatus != trackHumans) {
                 mTrackHumanStatus = trackHumans;
                 mOnTrackStatusChangedListener.onTrackStatusChanged(TRACK_TYPE_HUMAN, trackHumans);
             }
-            if (mTrackGestureStatus != trackGesture) {
-                mTrackGestureStatus = trackGesture;
-                mOnTrackStatusChangedListener.onTrackStatusChanged(TRACK_TYPE_GESTURE, trackGesture);
+            if (mTrackFaceStatus != trackFace) {
+                mTrackFaceStatus = trackFace;
+                mOnTrackStatusChangedListener.onTrackStatusChanged(TRACK_TYPE_FACE, trackFace);
             }
         }
     }
@@ -910,13 +888,14 @@ public class FURenderer {
      * @param r
      */
     public void queueEvent(Runnable r) {
-        if (r != null) {
-            if (mGlThreadId == Thread.currentThread().getId()) {
-                r.run();
-            } else {
-                synchronized (mLock) {
-                    mEventQueue.add(r);
-                }
+        if (r == null) {
+            return;
+        }
+        if (mGlThreadId == Thread.currentThread().getId()) {
+            r.run();
+        } else {
+            synchronized (this) {
+                mEventQueue.add(r);
             }
         }
     }
@@ -930,25 +909,24 @@ public class FURenderer {
         if (mDeviceOrientation == deviceOrientation) {
             return;
         }
-        Log.d(TAG, "onDeviceOrientationChanged() called with: deviceOrientation = [" + deviceOrientation + "]");
+        LogUtils.debug(TAG, "onDeviceOrientationChanged() deviceOrientation: %d", deviceOrientation);
         mDeviceOrientation = deviceOrientation;
         callWhenDeviceChanged();
     }
 
     /**
-     * 相机切换时需要调用
+     * 相机切换时调用
      *
-     * @param cameraType            前后置相机 ID
-     * @param inputImageOrientation 相机方向
+     * @param cameraFacing      相机 ID
+     * @param cameraOrientation 相机方向
      */
-    public void onCameraChanged(final int cameraType, final int inputImageOrientation) {
-        if (mCameraType == cameraType && mInputImageOrientation == inputImageOrientation) {
+    public void onCameraChanged(final int cameraFacing, final int cameraOrientation) {
+        if (mCameraFacing == cameraFacing && mInputImageOrientation == cameraOrientation) {
             return;
         }
-        Log.d(TAG, "onCameraChanged() called with: cameraType = [" + cameraType
-                + "], inputImageOrientation = [" + inputImageOrientation + "]");
-        mCameraType = cameraType;
-        mInputImageOrientation = inputImageOrientation;
+        LogUtils.debug(TAG, "onCameraChanged() cameraFacing: %d, cameraOrientation: %d", cameraFacing, cameraOrientation);
+        mCameraFacing = cameraFacing;
+        mInputImageOrientation = cameraOrientation;
         queueEvent(new Runnable() {
             @Override
             public void run() {
@@ -974,12 +952,12 @@ public class FURenderer {
     }
 
     private int createRotationMode() {
-        if (mInputTextureType == FURenderer.INPUT_2D_TEXTURE) {
+        if (mInputTextureType == FURenderer.INPUT_TEXTURE_2D) {
             return faceunity.FU_ROTATION_MODE_0;
         }
         int rotMode = faceunity.FU_ROTATION_MODE_0;
         if (mInputImageOrientation == 270) {
-            if (mCameraType == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            if (mCameraFacing == CAMERA_FACING_FRONT) {
                 rotMode = mDeviceOrientation / 90;
             } else {
                 if (mDeviceOrientation == 90) {
@@ -991,7 +969,7 @@ public class FURenderer {
                 }
             }
         } else if (mInputImageOrientation == 90) {
-            if (mCameraType == Camera.CameraInfo.CAMERA_FACING_BACK) {
+            if (mCameraFacing == CAMERA_FACING_BACK) {
                 if (mDeviceOrientation == 90) {
                     rotMode = faceunity.FU_ROTATION_MODE_270;
                 } else if (mDeviceOrientation == 270) {
@@ -1016,7 +994,7 @@ public class FURenderer {
 
     private int createFlags() {
         int flags = mInputTextureType | mInputImageFormat;
-        if (mInputTextureType == INPUT_2D_TEXTURE || mCameraType != Camera.CameraInfo.CAMERA_FACING_FRONT) {
+        if (mInputTextureType == INPUT_TEXTURE_2D || mCameraFacing != CAMERA_FACING_FRONT) {
             flags |= faceunity.FU_ADM_FLAG_FLIP_X;
         }
         return flags;
@@ -1029,8 +1007,10 @@ public class FURenderer {
         if (!mEffectList.add(effect)) {
             return;
         }
-        Log.d(TAG, "selectEffect: " + effect);
-        mFuItemHandler.sendMessage(Message.obtain(mFuItemHandler, FUItemHandler.MSG_WHAT_LOAD_BUNDLE, effect));
+        LogUtils.info(TAG, "selectEffect: %s", effect);
+        if (mFuItemHandler != null) {
+            Message.obtain(mFuItemHandler, FUItemHandler.MESSAGE_WHAT_LOAD_EFFECT, effect).sendToTarget();
+        }
     }
 
     public void unselectEffect(final Effect effect) {
@@ -1044,7 +1024,7 @@ public class FURenderer {
         if (handle <= 0) {
             return;
         }
-        Log.d(TAG, "unselectEffect: " + effect);
+        LogUtils.info(TAG, "unselectEffect: %s", effect);
         queueEvent(new Runnable() {
             @Override
             public void run() {
@@ -1052,7 +1032,7 @@ public class FURenderer {
                     if (mItemsArray[i] == handle) {
                         faceunity.fuDestroyItem(handle);
                         mItemsArray[i] = 0;
-                        Log.d(TAG, "destroy item handle:" + handle);
+                        LogUtils.debug(TAG, "destroy item handle: %d", handle);
                         break;
                     }
                 }
@@ -1064,7 +1044,7 @@ public class FURenderer {
                     }
                 }
                 if (newLength == 0) {
-                    newLength = ITEMS_ARRAY_COUNT;
+                    newLength = 1;
                 }
                 int[] trimmedItems = new int[newLength];
                 for (int i = 0, j = 0; i < mItemsArray.length; i++) {
@@ -1073,14 +1053,28 @@ public class FURenderer {
                     }
                 }
                 mItemsArray = trimmedItems;
+                // always set max face 8
+                faceunity.fuSetMaxFaces(mMaxFaces);
                 resetTrackStatus();
-                Log.i(TAG, "new item array:" + Arrays.toString(trimmedItems));
+                LogUtils.debug(TAG, "new item array: %s", Arrays.toString(trimmedItems));
+            }
+        });
+    }
+
+    public void setEffectItemParam(final int handle, final String key, final Object value) {
+        if (handle <= 0 || key == null || value == null) {
+            return;
+        }
+        queueEvent(new Runnable() {
+            @Override
+            public void run() {
+                setItemParam(handle, key, value);
             }
         });
     }
 
     public void resetTrackStatus() {
-        Log.d(TAG, "resetTrackStatus: ");
+        LogUtils.debug(TAG, "resetTrackStatus: ");
         queueEvent(new Runnable() {
             @Override
             public void run() {
@@ -1089,6 +1083,21 @@ public class FURenderer {
                 mTrackGestureStatus = -1;
             }
         });
+    }
+
+    private void setItemParam(int handle, String key, Object value) {
+        LogUtils.debug(TAG, "fuItemSetParam. handle: %d, key: %s, value: %s", handle, key, value);
+        if (value instanceof Double) {
+            faceunity.fuItemSetParam(handle, key, (Double) value);
+        } else if (value instanceof Integer) {
+            faceunity.fuItemSetParam(handle, key, (Integer) value);
+        } else if (value instanceof Float) {
+            faceunity.fuItemSetParam(handle, key, (Float) value);
+        } else if (value instanceof String) {
+            faceunity.fuItemSetParam(handle, key, (String) value);
+        } else if (value instanceof double[]) {
+            faceunity.fuItemSetParam(handle, key, (double[]) value);
+        }
     }
 
     //-----------------------------人脸识别回调相关定义-----------------------------------
@@ -1136,10 +1145,10 @@ public class FURenderer {
 
     public interface OnDebugListener {
         /**
-         * 统计每 10 帧的平均值，FPS 和渲染时间
+         * 统计每 10 帧的平均值
          *
-         * @param fps        FPS
-         * @param renderTime 渲染时间
+         * @param fps         FPS
+         * @param renderTime  渲染时间
          * @param elapsedTime 帧间耗时
          */
         void onFpsChanged(double fps, double renderTime, double elapsedTime);
@@ -1167,7 +1176,8 @@ public class FURenderer {
     //--------------------------------------IO handler 线程异步加载道具-------------------------------------
 
     private class FUItemHandler extends Handler {
-        private static final int MSG_WHAT_LOAD_BUNDLE = 666;
+        private static final int MESSAGE_WHAT_LOAD_EFFECT = 666;
+        private static final int MESSAGE_WHAT_LOAD_CONTROLLER = 888;
 
         FUItemHandler(Looper looper) {
             super(looper);
@@ -1176,14 +1186,15 @@ public class FURenderer {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
-            if (msg.what == MSG_WHAT_LOAD_BUNDLE) {
+            if (msg.what == MESSAGE_WHAT_LOAD_EFFECT) {
                 final Effect effect = (Effect) msg.obj;
                 if (effect == null) {
                     return;
                 }
-                final int itemEffect = loadItem(mContext, effect.getFilePath());
+                final int itemEffect = BundleUtils.loadItem(mContext, effect.getFilePath());
                 effect.setHandle(itemEffect);
                 if (itemEffect <= 0) {
+                    LogUtils.warn(TAG, "load item failed: %d", itemEffect);
                     return;
                 }
                 queueEvent(new Runnable() {
@@ -1193,16 +1204,11 @@ public class FURenderer {
                         if (params != null && params.size() > 0) {
                             Set<Map.Entry<String, Object>> entries = params.entrySet();
                             for (Map.Entry<String, Object> entry : entries) {
-                                Object value = entry.getValue();
                                 String key = entry.getKey();
-                                if (value instanceof Double) {
-                                    faceunity.fuItemSetParam(itemEffect, key, (Double) value);
-                                } else if (value instanceof String) {
-                                    faceunity.fuItemSetParam(itemEffect, key, (String) value);
-                                } else if (value instanceof double[]) {
-                                    faceunity.fuItemSetParam(itemEffect, key, (double[]) value);
+                                Object value = entry.getValue();
+                                if (key != null && value != null) {
+                                    setItemParam(itemEffect, key, value);
                                 }
-                                Log.v(TAG, "fuItemSetParam. handle:" + itemEffect + ", key:" + key + ", value:" + value);
                             }
                         }
 
@@ -1225,12 +1231,108 @@ public class FURenderer {
                         } else {
                             mItemsArray[0] = itemEffect;
                         }
+                        // always set max face 8
+                        faceunity.fuSetMaxFaces(mMaxFaces);
                         resetTrackStatus();
-                        Log.i(TAG, "new item array:" + Arrays.toString(mItemsArray));
+                        LogUtils.debug(TAG, "new item array: %s", Arrays.toString(mItemsArray));
+                    }
+                });
+            } else if (msg.what == MESSAGE_WHAT_LOAD_CONTROLLER) {
+                int[] defaultItems = new int[3];
+                final int controllerItem = BundleUtils.loadItem(mContext, ASSETS_DIR_GRAPHICS + "controller.bundle");
+                if (controllerItem <= 0) {
+                    return;
+                }
+                final int controllerConfigItem = BundleUtils.loadItem(mContext, ASSETS_DIR_PTA + "controller_config.bundle");
+                defaultItems[0] = controllerConfigItem;
+                if (controllerConfigItem > 0) {
+                    queueEvent(new Runnable() {
+                        @Override
+                        public void run() {
+                            faceunity.fuBindItems(controllerItem, new int[]{controllerConfigItem});
+                            LogUtils.debug(TAG, "run: controller bind config");
+                        }
+                    });
+                }
+                final int bgItem = BundleUtils.loadItem(mContext, ASSETS_DIR_PTA + "default_bg.bundle");
+                defaultItems[1] = bgItem;
+                if (bgItem > 0) {
+                    queueEvent(new Runnable() {
+                        @Override
+                        public void run() {
+                            faceunity.fuBindItems(controllerItem, new int[]{bgItem});
+                            LogUtils.debug(TAG, "run: controller bind default bg");
+                        }
+                    });
+                }
+                final int fakeManItem = BundleUtils.loadItem(mContext, ASSETS_DIR_PTA + "fakeman.bundle");
+                defaultItems[2] = fakeManItem;
+                if (fakeManItem > 0) {
+                    queueEvent(new Runnable() {
+                        @Override
+                        public void run() {
+                            faceunity.fuBindItems(controllerItem, new int[]{fakeManItem});
+                            LogUtils.debug(TAG, "run: controller bind fake man");
+                        }
+                    });
+                }
+                final int fxaaItem = BundleUtils.loadItem(mContext, ASSETS_DIR_GRAPHICS + "fxaa.bundle");
+                int[] gestureItems = new int[GESTURE_BIND_BUNDLES.length];
+                for (int i = 0; i < GESTURE_BIND_BUNDLES.length; i++) {
+                    int item = BundleUtils.loadItem(mContext, ASSETS_DIR_PTA + "gesture/" + GESTURE_BIND_BUNDLES[i]);
+                    gestureItems[i] = item;
+                }
+                final int[] validGestureItems = validateItems(gestureItems);
+                queueEvent(new Runnable() {
+                    @Override
+                    public void run() {
+                        faceunity.fuBindItems(controllerItem, validGestureItems);
+                        LogUtils.debug(TAG, "run: controller bind gesture");
+                    }
+                });
+                int[] validDefaultItems = validateItems(defaultItems);
+                int[] controllerBoundItems = new int[validDefaultItems.length + validGestureItems.length];
+                System.arraycopy(validDefaultItems, 0, controllerBoundItems, 0, validDefaultItems.length);
+                System.arraycopy(validGestureItems, 0, controllerBoundItems, validDefaultItems.length, validGestureItems.length);
+                mControllerBoundItems = controllerBoundItems;
+                LogUtils.debug(TAG, "run: controller all bind item %s", Arrays.toString(controllerBoundItems));
+                final Runnable callback = (Runnable) msg.obj;
+                queueEvent(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int item : mItemsArray) {
+                            if (item > 0) {
+                                faceunity.fuDestroyItem(item);
+                            }
+                        }
+                        for (Effect effect : mEffectList) {
+                            effect.setHandle(0);
+                        }
+                        Arrays.fill(mItemsArray, 0);
+                        // 关闭CNN面部追踪
+                        faceunity.fuItemSetParam(controllerItem, "close_face_capture", 1.0);
+                        // 关闭 DDE
+                        faceunity.fuItemSetParam(controllerItem, "is_close_dde", 1.0);
+                        // 进入身体追踪模式
+                        faceunity.fuItemSetParam(controllerItem, "enable_human_processor", 1.0);
+                        int[] items = new int[2];
+                        items[0] = controllerItem;
+                        items[1] = fxaaItem;
+                        mItemsArray = items;
+                        setHumanTrackScene(mHumanTrackScene);
+                        mRotationMode = faceunity.fuGetCurrentRotationMode();
+                        faceunity.fuSetDefaultRotationMode(0);
+                        mRenderMode = RENDER_MODE_CONTROLLER;
+                        resetTrackStatus();
+
+                        if (callback != null) {
+                            callback.run();
+                        }
                     }
                 });
             }
         }
+
     }
 
     //--------------------------------------Builder----------------------------------------
@@ -1240,15 +1342,15 @@ public class FURenderer {
      */
     public static class Builder {
         private Context context;
-        private boolean isCreateEGLContext = false;
+        private boolean isCreateEGLContext;
         private int maxHumans = 1;
-        private int maxFaces = 1;
+        private int maxFaces = MAX_FACE_COUNT;
         private int deviceOrientation = 90;
-        private int inputTextureType = INPUT_2D_TEXTURE;
+        private int inputTextureType = INPUT_TEXTURE_2D;
         private int inputImageFormat = 0;
         private int inputImageOrientation = 270;
-        private int cameraType = Camera.CameraInfo.CAMERA_FACING_FRONT;
-        private boolean isRunBenchmark = false;
+        private int cameraFacing = CAMERA_FACING_FRONT;
+        private boolean isRunBenchmark;
         private OnDebugListener onDebugListener;
         private OnTrackStatusChangedListener onTrackStatusChangedListener;
         private OnSystemErrorListener onSystemErrorListener;
@@ -1338,11 +1440,11 @@ public class FURenderer {
         /**
          * 相机前后方向
          *
-         * @param cameraType
+         * @param cameraFacing
          * @return
          */
-        public Builder setCameraType(int cameraType) {
-            this.cameraType = cameraType;
+        public Builder setCameraFacing(int cameraFacing) {
+            this.cameraFacing = cameraFacing;
             return this;
         }
 
@@ -1399,17 +1501,17 @@ public class FURenderer {
             fuRenderer.mInputTextureType = inputTextureType;
             fuRenderer.mInputImageFormat = inputImageFormat;
             fuRenderer.mInputImageOrientation = inputImageOrientation;
-            fuRenderer.mCameraType = cameraType;
+            fuRenderer.mCameraFacing = cameraFacing;
             fuRenderer.mIsRunBenchmark = isRunBenchmark;
             fuRenderer.mOnDebugListener = onDebugListener;
             fuRenderer.mOnTrackStatusChangedListener = onTrackStatusChangedListener;
             fuRenderer.mOnSystemErrorListener = onSystemErrorListener;
 
-            Log.d(TAG, "FURenderer fields. isCreateEGLContext: " + isCreateEGLContext + ", maxFaces: "
+            LogUtils.debug(TAG, "FURenderer fields. isCreateEGLContext: " + isCreateEGLContext + ", maxFaces: "
                     + maxFaces + ", maxHumans: " + maxHumans + ", inputTextureType: " + inputTextureType
                     + ", inputImageFormat: " + inputImageFormat + ", inputImageOrientation: " + inputImageOrientation
-                    + ", deviceOrientation: " + deviceOrientation + ", cameraType: "
-                    + (cameraType == Camera.CameraInfo.CAMERA_FACING_FRONT ? "front" : "back") + ", isRunBenchmark: " + isRunBenchmark);
+                    + ", deviceOrientation: " + deviceOrientation + ", cameraFacing: "
+                    + (cameraFacing == FURenderer.CAMERA_FACING_FRONT ? "front" : "back") + ", isRunBenchmark: " + isRunBenchmark);
             return fuRenderer;
         }
     }
