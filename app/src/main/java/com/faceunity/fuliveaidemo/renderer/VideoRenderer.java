@@ -9,7 +9,6 @@ import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.util.Log;
 import android.view.Surface;
 
 import androidx.lifecycle.Lifecycle;
@@ -18,6 +17,7 @@ import com.faceunity.fuliveaidemo.gles.ProgramTexture2d;
 import com.faceunity.fuliveaidemo.gles.ProgramTextureOES;
 import com.faceunity.fuliveaidemo.gles.core.GlUtil;
 import com.faceunity.fuliveaidemo.util.LimitFpsUtil;
+import com.faceunity.nama.utils.LogUtils;
 import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
@@ -122,7 +122,7 @@ public class VideoRenderer extends AbstractLifeCycleRenderer implements GLSurfac
         });
         mOnVideoRendererListener.onSurfaceCreated();
         retrieveMediaMetaData();
-        Log.d(TAG, "onSurfaceCreated: videoWidth:" + mVideoWidth + ", videoHeight:" + mVideoHeight + ", videoRotation:" + mVideoRotation);
+        LogUtils.debug(TAG, "onSurfaceCreated: videoWidth: %d, videoHeight: %d, videoRotation: %d", mVideoWidth, mVideoHeight, mVideoRotation);
     }
 
     @Override
@@ -132,7 +132,7 @@ public class VideoRenderer extends AbstractLifeCycleRenderer implements GLSurfac
         boolean isLandscape = mVideoRotation % 180 == 0;
         mMvpMatrix = GlUtil.changeMVPMatrixInside(width, height, isLandscape ? mVideoWidth : mVideoHeight,
                 isLandscape ? mVideoHeight : mVideoWidth);
-        Log.d(TAG, "onSurfaceChanged() width:" + width + ", height:" + height);
+        LogUtils.debug(TAG, "onSurfaceChanged() width: %d, height: %d", width, height);
     }
 
     @Override
@@ -146,7 +146,7 @@ public class VideoRenderer extends AbstractLifeCycleRenderer implements GLSurfac
             mSurfaceTexture.updateTexImage();
             mSurfaceTexture.getTransformMatrix(mTexMatrix);
         } catch (Exception e) {
-            Log.e(TAG, "onDrawFrame: ", e);
+            LogUtils.error(TAG, "onDrawFrame: ", e);
             return;
         }
 
@@ -175,7 +175,7 @@ public class VideoRenderer extends AbstractLifeCycleRenderer implements GLSurfac
     }
 
     public void startMediaPlayer() {
-        Log.d(TAG, "startMediaPlayer: ");
+        LogUtils.debug(TAG, "startMediaPlayer: ");
         mPlayerHandler.post(new Runnable() {
             @Override
             public void run() {
@@ -186,7 +186,7 @@ public class VideoRenderer extends AbstractLifeCycleRenderer implements GLSurfac
     }
 
     private void createExoMediaPlayer() {
-        Log.d(TAG, "createExoMediaPlayer: ");
+        LogUtils.debug(TAG, "createExoMediaPlayer: ");
         mSimpleExoPlayer = new SimpleExoPlayer.Builder(mContext).build();
         MediaEventListener mediaEventListener = new MediaEventListener();
         mSimpleExoPlayer.addListener(mediaEventListener);
@@ -200,7 +200,7 @@ public class VideoRenderer extends AbstractLifeCycleRenderer implements GLSurfac
     }
 
     private void releaseExoMediaPlayer() {
-        Log.d(TAG, "releaseExoMediaPlayer: ");
+        LogUtils.debug(TAG, "releaseExoMediaPlayer: ");
         if (mSimpleExoPlayer != null) {
             mSimpleExoPlayer.stop(true);
             mSimpleExoPlayer.release();
@@ -216,14 +216,14 @@ public class VideoRenderer extends AbstractLifeCycleRenderer implements GLSurfac
             mVideoHeight = Integer.parseInt(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
             mVideoRotation = Integer.parseInt(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION));
         } catch (Exception e) {
-            Log.e(TAG, "MediaMetadataRetriever extractMetadata: ", e);
+            LogUtils.error(TAG, "MediaMetadataRetriever extractMetadata: ", e);
         } finally {
             mediaMetadataRetriever.release();
         }
     }
 
     private void createSurface() {
-        Log.d(TAG, "createSurface: ");
+        LogUtils.debug(TAG, "createSurface: ");
         mSurfaceTexture = new SurfaceTexture(mVideoTextureId);
         mSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
             @Override
@@ -235,7 +235,7 @@ public class VideoRenderer extends AbstractLifeCycleRenderer implements GLSurfac
     }
 
     private void releaseSurface() {
-        Log.d(TAG, "releaseSurface: ");
+        LogUtils.debug(TAG, "releaseSurface: ");
         if (mSurfaceTexture != null) {
             mSurfaceTexture.release();
             mSurfaceTexture = null;
@@ -247,7 +247,7 @@ public class VideoRenderer extends AbstractLifeCycleRenderer implements GLSurfac
     }
 
     private void onSurfaceDestroy() {
-        Log.d(TAG, "onSurfaceDestroy");
+        LogUtils.debug(TAG, "onSurfaceDestroy");
         if (mVideoTextureId > 0) {
             GLES20.glDeleteTextures(1, new int[]{mVideoTextureId}, 0);
             mVideoTextureId = 0;
@@ -286,12 +286,12 @@ public class VideoRenderer extends AbstractLifeCycleRenderer implements GLSurfac
 //                    break;
                 case Player.STATE_READY:
                     if (playWhenReady) {
-                        Log.d(TAG, "onPlayerStateChanged: prepared " + Thread.currentThread().getName());
+                        LogUtils.debug(TAG, "onPlayerStateChanged: prepared %s", Thread.currentThread().getName());
                         mGlSurfaceView.requestRender();
                     }
                     break;
                 case Player.STATE_ENDED:
-                    Log.d(TAG, "onPlayerStateChanged: completion " + Thread.currentThread().getName());
+                    LogUtils.debug(TAG, "onPlayerStateChanged: completion %s", Thread.currentThread().getName());
                     if (mOnMediaEventListener != null) {
                         mOnMediaEventListener.onCompletion();
                     }
@@ -302,7 +302,7 @@ public class VideoRenderer extends AbstractLifeCycleRenderer implements GLSurfac
 
         @Override
         public void onPlayerError(ExoPlaybackException error) {
-            Log.w(TAG, "onPlayerError: ", error);
+            LogUtils.warn(TAG, "onPlayerError: ", error);
             String message;
             switch (error.type) {
                 case ExoPlaybackException.TYPE_SOURCE:

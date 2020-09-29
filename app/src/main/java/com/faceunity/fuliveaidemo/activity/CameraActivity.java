@@ -1,7 +1,6 @@
 package com.faceunity.fuliveaidemo.activity;
 
 import android.content.Intent;
-import android.hardware.Camera;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.MotionEvent;
@@ -13,6 +12,8 @@ import com.faceunity.fuliveaidemo.gles.core.GlUtil;
 import com.faceunity.fuliveaidemo.renderer.BaseCameraRenderer;
 import com.faceunity.fuliveaidemo.renderer.Camera1Renderer;
 import com.faceunity.fuliveaidemo.renderer.OnCameraRendererListener;
+import com.faceunity.fuliveaidemo.util.CameraUtils;
+import com.faceunity.fuliveaidemo.util.DecimalUtils;
 import com.faceunity.fuliveaidemo.util.LifeCycleSensorManager;
 import com.faceunity.fuliveaidemo.util.ToastUtil;
 import com.faceunity.fuliveaidemo.util.VideoRecorder;
@@ -28,7 +29,7 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
         FURenderer.OnDebugListener, LifeCycleSensorManager.OnAccelerometerChangedListener, VideoRecorder.OnVideoRecordListener {
     private BaseCameraRenderer mCameraRenderer;
     private RecordButton mRecordBtn;
-    private TextView mTvDebug;
+    private TextView mTvDebugInfo;
     private VideoRecorder mVideoRecorder;
 
     @Override
@@ -53,8 +54,9 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
         findViewById(R.id.iv_save_photo).setVisibility(View.GONE);
         mRecordBtn = findViewById(R.id.btn_record_video);
         mRecordBtn.setOnRecordListener(this);
-        mTvDebug = findViewById(R.id.tv_debug);
-        mTvDebug.setTag(true);
+        mTvDebugInfo = findViewById(R.id.tv_debug_info);
+        mTvDebugInfo.setVisibility(View.VISIBLE);
+        mTvDebugInfo.setTag(false);
         findViewById(R.id.iv_debug).setOnClickListener(mViewClickListener);
         findViewById(R.id.iv_switch_cam).setOnClickListener(mViewClickListener);
     }
@@ -62,18 +64,18 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
     @Override
     protected void initFuRenderer() {
         mFURenderer = new FURenderer.Builder(this)
-                .setCameraType(Camera.CameraInfo.CAMERA_FACING_BACK)
-                .setInputTextureType(FURenderer.INPUT_EXTERNAL_OES_TEXTURE)
-                .setInputImageOrientation(FURenderer.getCameraOrientation(Camera.CameraInfo.CAMERA_FACING_BACK))
+                .setCameraFacing(mCameraRenderer.getCameraFacing())
+                .setInputTextureType(FURenderer.INPUT_TEXTURE_EXTERNAL_OES)
+                .setInputImageOrientation(CameraUtils.getCameraOrientation(mCameraRenderer.getCameraFacing()))
                 .setRunBenchmark(true)
                 .setOnDebugListener(this)
-                .setOnTrackStatusChangedListener(this)
                 .build();
     }
 
     @Override
     protected void initGlRenderer() {
         mCameraRenderer = new Camera1Renderer(getLifecycle(), this, mGlSurfaceView, this);
+        mIsFlipX = mCameraRenderer.getCameraFacing() == FURenderer.CAMERA_FACING_FRONT;
     }
 
     @Override
@@ -84,7 +86,9 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
     @Override
     public int onDrawFrame(byte[] cameraNv21Byte, int cameraTexId, int cameraWidth, int cameraHeight, float[] mvpMatrix, float[] texMatrix, long timeStamp) {
         int fuTexId = mFURenderer.drawFrame(cameraNv21Byte, cameraTexId, cameraWidth, cameraHeight);
+        trackFace();
         trackHuman();
+        queryTrackStatus();
         mPhotoTaker.send(fuTexId, GlUtil.IDENTITY_MATRIX, texMatrix, cameraHeight, cameraWidth);
         mVideoRecorder.send(fuTexId, GlUtil.IDENTITY_MATRIX, texMatrix, timeStamp);
         return fuTexId;
@@ -105,6 +109,7 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
 
     @Override
     public void onCameraChanged(int cameraFacing, int cameraOrientation) {
+        mIsFlipX = cameraFacing == FURenderer.CAMERA_FACING_FRONT;
         mFURenderer.onCameraChanged(cameraFacing, cameraOrientation);
     }
 
@@ -124,15 +129,32 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
 
     @Override
     public void onFpsChanged(final double fps, final double renderTime, double elapsedTime) {
-        boolean isShow = (boolean) mTvDebug.getTag();
+        final float[] faceRotationEuler = mFURenderer.getFaceRotationEuler();
+        boolean isShow = (boolean) mTvDebugInfo.getTag();
         if (!isShow) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    String text = String.format(getString(R.string.debug_info),
-                            mCameraRenderer.getCameraWidth(), mCameraRenderer.getCameraHeight(),
-                            (int) fps, (int) renderTime);
-                    mTvDebug.setText(text);
+                    boolean isAllZero = true;
+                    for (float v : faceRotationEuler) {
+                        if (!DecimalUtils.floatEquals(v, 0f)) {
+                            isAllZero = false;
+                            break;
+                        }
+                    }
+                    String upperText = "resolution:\n" + mCameraRenderer.getCameraWidth() + "x" + mCameraRenderer.getCameraHeight()
+                            + "\nfps: " + (int) fps + "\nframe cost: " + (int) renderTime + "ms\n";
+                    String lowerText;
+                    if (isAllZero) {
+                        lowerText = "yaw: null\npitch: null\nroll: null";
+                    } else {
+                        boolean isFront = mCameraRenderer.getCameraFacing() == BaseCameraRenderer.FACE_FRONT;
+                        float yaw = isFront ? -faceRotationEuler[1] : faceRotationEuler[1];
+                        float pitch = faceRotationEuler[0];
+                        float roll = isFront ? -faceRotationEuler[2] : faceRotationEuler[2];
+                        lowerText = String.format("yaw: %.2f°\npitch: %.2f°\nroll: %.2f°", yaw, pitch, roll);
+                    }
+                    mTvDebugInfo.setText(upperText.concat(lowerText));
                 }
             });
         }
@@ -219,9 +241,9 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
             }
             break;
             case R.id.iv_debug: {
-                boolean isShow = (boolean) mTvDebug.getTag();
-                mTvDebug.setTag(!isShow);
-                mTvDebug.setVisibility(isShow ? View.VISIBLE : View.GONE);
+                boolean isShow = (boolean) mTvDebugInfo.getTag();
+                mTvDebugInfo.setTag(!isShow);
+                mTvDebugInfo.setVisibility(isShow ? View.VISIBLE : View.GONE);
             }
             break;
             default:

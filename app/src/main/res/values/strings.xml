@@ -11,20 +11,24 @@
     <string name="image_not_exist">所选图片文件不存在</string>
     <string name="wrong_image_format">请选择图片文件</string>
     <string name="config_main_title">人体 AI 技术</string>
+    <string name="config_sub_title_face">人脸</string>
     <string name="config_sub_title_human">人体</string>
     <string name="config_sub_title_gesture">手势</string>
     <string name="config_sub_title_seg">分割</string>
     <string name="config_sub_title_action">动作</string>
+    <string name="config_item_face_landmarks_75">人脸特征点</string>
+    <string name="config_item_face_tongue">舌头检测</string>
+    <string name="config_item_face_expression">表情识别</string>
     <string name="config_item_human_landmark">人体关键点</string>
     <string name="config_item_human_skeleton">人体骨骼</string>
     <string name="config_item_human_full">全身</string>
     <string name="config_item_human_half">半身</string>
-    <string name="config_item_gesture_recognize">手势识别</string>
+    <string name="config_item_gesture_recognition">手势识别</string>
     <string name="config_item_seg_portrait">人像分割</string>
     <string name="config_item_seg_hair">头发分割</string>
     <string name="config_item_seg_head">头部分割</string>
-    <string name="config_item_action_recognize">动作识别</string>
-    <string name="debug_info">resolution:\n%dx%d\nfps: %d\nframe cost: %dms</string>
+    <string name="config_item_action_recognition">动作识别</string>
+    <string name="debug_info">resolution:\n%dx%d\nfps: %d\nframe cost: %dms\nyaw: %.2f\npitch: %.2f\nroll: %.2f</string>
     <string name="track_status_no_human">未检测到人体</string>
     <string name="track_status_no_face">未检测到人脸</string>
     <string name="track_status_no_human_full">未检测到全身，全身入境试试哦~</string>
@@ -35,5 +39,13 @@
     <string name="camera_preview_failed">相机预览失败</string>
     <string name="camera_close_failed">相机关闭失败</string>
     <string name="dialog_loading">数据加载中</string>
+    <string name="tongue_track_up">舌头上</string>
+    <string name="tongue_track_down">舌头下</string>
+    <string name="tongue_track_left">舌头左</string>
+    <string name="tongue_track_right">舌头右</string>
+    <string name="tongue_track_left_up">舌头左上</string>
+    <string name="tongue_track_left_down">舌头左下</string>
+    <string name="tongue_track_right_up">舌头右上</string>
+    <string name="tongue_track_right_down">舌头右下</string>
 
 </resources>

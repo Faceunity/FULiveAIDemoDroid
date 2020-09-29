@@ -2,13 +2,13 @@ package com.faceunity.fuliveaidemo.util;
 
 import android.opengl.EGL14;
 import android.opengl.GLSurfaceView;
-import android.os.AsyncTask;
-import android.util.Log;
 
 import com.faceunity.fuliveaidemo.encoder.MediaAudioEncoder;
 import com.faceunity.fuliveaidemo.encoder.MediaEncoder;
 import com.faceunity.fuliveaidemo.encoder.MediaMuxerWrapper;
 import com.faceunity.fuliveaidemo.encoder.MediaVideoEncoder;
+import com.faceunity.nama.utils.LogUtils;
+import com.faceunity.nama.utils.ThreadHelper;
 
 import java.io.File;
 import java.io.IOException;
@@ -46,8 +46,8 @@ public final class VideoRecorder {
      * @param height
      */
     public void start(final int width, final int height) {
-        Log.d(TAG, "start width:" + width + ", height:" + height);
-        AsyncTask.execute(new Runnable() {
+        LogUtils.debug(TAG, "start width: %d, height: %d", width, height);
+        ThreadHelper.getInstance().execute(new Runnable() {
             @Override
             public void run() {
                 long start = System.currentTimeMillis();
@@ -65,10 +65,10 @@ public final class VideoRecorder {
                     mMuxerWrapper.prepare();
                     mMuxerWrapper.startRecording();
                 } catch (IOException e) {
-                    Log.e(TAG, "start: ", e);
+                    LogUtils.error(TAG, "start: ", e);
                 }
-                long time = System.currentTimeMillis() - start;
-                Log.i(TAG, "start time: " + time + "ms");
+                int time = (int) (System.currentTimeMillis() - start);
+                LogUtils.info(TAG, "start time: %dms", time);
             }
         });
     }
@@ -77,8 +77,8 @@ public final class VideoRecorder {
      * stop record video, this may cost too much time, so execute in async task
      */
     public void stop() {
-        Log.d(TAG, "stop");
-        AsyncTask.execute(new Runnable() {
+        LogUtils.debug(TAG, "stop");
+        ThreadHelper.getInstance().execute(new Runnable() {
             @Override
             public void run() {
                 mIsStopped = true;
@@ -120,7 +120,7 @@ public final class VideoRecorder {
         @Override
         public void onPrepared(final MediaEncoder encoder) {
             if (encoder instanceof MediaVideoEncoder) {
-                Log.i(TAG, "onPrepared:");
+                LogUtils.info(TAG, "onPrepared:");
                 mGlSurfaceView.queueEvent(new Runnable() {
                     @Override
                     public void run() {
@@ -151,7 +151,7 @@ public final class VideoRecorder {
             }
             // check video duration validation
             boolean valid = System.currentTimeMillis() - mPreparedTime > MIN_VIDEO_DURATION_MS;
-            Log.d(TAG, "onStopped: " + valid);
+            LogUtils.debug(TAG, "onStopped: " + valid);
             mPreparedTime = 0;
             mCountDownLatch = null;
             if (mOnVideoRecordListener != null) {
@@ -161,7 +161,7 @@ public final class VideoRecorder {
                 return;
             }
             // onStopped is called on codec thread, it may be interrupted, so we execute following code async.
-            AsyncTask.execute(new Runnable() {
+            ThreadHelper.getInstance().execute(new Runnable() {
                 @Override
                 public void run() {
                     File videoFile = new File(Constant.VIDEO_FILE_PATH, mTempFile.getName());

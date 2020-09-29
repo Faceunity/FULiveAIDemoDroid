@@ -90,17 +90,18 @@ public final class CameraUtils {
     }
 
     /**
-     * 获取前置相机的方向
+     * 获取相机方向
      *
+     * @param cameraFacing
      * @return
      */
-    public static int getFrontCameraOrientation() {
+    public static int getCameraOrientation(int cameraFacing) {
         Camera.CameraInfo info = new Camera.CameraInfo();
         int cameraId = -1;
         int numCameras = Camera.getNumberOfCameras();
         for (int i = 0; i < numCameras; i++) {
             Camera.getCameraInfo(i, info);
-            if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            if (info.facing == cameraFacing) {
                 cameraId = i;
                 break;
             }

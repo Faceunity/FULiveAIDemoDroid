@@ -9,10 +9,11 @@ import java.util.Map;
  */
 public class Effect {
     /* type */
-    public static final int TYPE_HUMAN = 1;
-    public static final int TYPE_GESTURE = 2;
-    public static final int TYPE_SEGMENTATION = 3;
-    public static final int TYPE_ACTION = 4;
+    public static final int TYPE_FACE = 1;
+    public static final int TYPE_HUMAN = 2;
+    public static final int TYPE_GESTURE = 3;
+    public static final int TYPE_SEGMENTATION = 4;
+    public static final int TYPE_ACTION = 5;
 
     /* state */
     public static final int STATE_ENABLE = 1;
@@ -38,6 +39,14 @@ public class Effect {
         this.description = description;
         this.type = type;
         this.params = params;
+    }
+
+    public Effect(Effect effect) {
+        this.filePath = effect.filePath;
+        this.description = effect.description;
+        this.type = effect.type;
+        this.params = effect.params;
+        this.state = effect.state;
     }
 
     public int getType() {

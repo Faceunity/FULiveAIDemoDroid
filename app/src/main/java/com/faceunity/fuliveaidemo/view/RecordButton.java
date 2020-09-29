@@ -17,6 +17,8 @@ import com.faceunity.fuliveaidemo.R;
 import com.faceunity.fuliveaidemo.util.DensityUtils;
 
 /**
+ * 录制视频按钮
+ * <p>
  * Created by tujh on 2017/6/14.
  */
 public class RecordButton extends View implements View.OnTouchListener {

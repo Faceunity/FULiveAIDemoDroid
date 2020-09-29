@@ -7,14 +7,15 @@ import android.view.View;
 import com.faceunity.fuliveaidemo.R;
 import com.faceunity.fuliveaidemo.renderer.OnPhotoRendererListener;
 import com.faceunity.fuliveaidemo.renderer.PhotoRenderer;
-import com.faceunity.fuliveaidemo.util.LogUtils;
 import com.faceunity.fuliveaidemo.util.ToastUtil;
 import com.faceunity.nama.FURenderer;
+import com.faceunity.nama.utils.LogUtils;
 
 /**
  * @author Richie on 2020.05.21
  */
 public class PhotoActivity extends BaseGlActivity implements OnPhotoRendererListener {
+    private static final String TAG = "PhotoActivity";
     public static final String PHOTO_PATH = "photo_path";
     private View mIvSavePhoto;
 
@@ -27,7 +28,9 @@ public class PhotoActivity extends BaseGlActivity implements OnPhotoRendererList
     @Override
     public int onDrawFrame(byte[] photoRgbaByte, int photoTextureId, int photoWidth, int photoHeight) {
         int fuTexId = mFURenderer.onDrawFrameSingleInput(photoTextureId, photoWidth, photoHeight);
+        trackFace();
         trackHuman();
+        queryTrackStatus();
         mPhotoTaker.send(fuTexId, PhotoRenderer.MATRIX_ROTATE_90, PhotoRenderer.IMAGE_TEXTURE_MATRIX, photoWidth, photoHeight);
         return fuTexId;
     }
@@ -44,15 +47,14 @@ public class PhotoActivity extends BaseGlActivity implements OnPhotoRendererList
     @Override
     protected void initFuRenderer() {
         mFURenderer = new FURenderer.Builder(this)
-                .setInputTextureType(FURenderer.INPUT_2D_TEXTURE)
-                .setOnTrackStatusChangedListener(this)
+                .setInputTextureType(FURenderer.INPUT_TEXTURE_2D)
                 .build();
     }
 
     @Override
     protected void initGlRenderer() {
         String photoPath = getIntent().getStringExtra(PHOTO_PATH);
-        LogUtils.d(photoPath);
+        LogUtils.debug(TAG, "photoPath: %s", photoPath);
         new PhotoRenderer(getLifecycle(), photoPath, mGlSurfaceView, this);
     }
 
