@@ -59,7 +59,7 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
     protected Activity mActivity;
     protected Handler mBackgroundHandler;
     protected boolean mIsPreviewing;
-    private ProgramTextureOES mProgramTextureOES;
+    private ProgramTextureOES mProgramTextureOes;
     private ProgramTexture2d mProgramTexture2d;
     protected int m2DTexId;
     protected OnCameraRendererListener mOnRendererStatusListener;
@@ -95,7 +95,7 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         Log.d(TAG, "onSurfaceCreated. thread:" + Thread.currentThread().getName());
         mProgramTexture2d = new ProgramTexture2d();
-        mProgramTextureOES = new ProgramTextureOES();
+        mProgramTextureOes = new ProgramTextureOES();
         mCameraTexId = GlUtil.createTextureObject(GLES11Ext.GL_TEXTURE_EXTERNAL_OES);
         mBackgroundHandler.post(new Runnable() {
             @Override
@@ -155,11 +155,11 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
             if (m2DTexId > 0) {
                 mProgramTexture2d.drawFrame(m2DTexId, mRenderRotatedImage ? GlUtil.IDENTITY_MATRIX : mTexMatrix, mMvpMatrix);
             } else if (mCameraTexId > 0) {
-                mProgramTextureOES.drawFrame(mCameraTexId, mTexMatrix, mMvpMatrix);
+                mProgramTextureOes.drawFrame(mCameraTexId, mTexMatrix, mMvpMatrix);
             }
             if (mDrawSmallViewport) {
                 GLES20.glViewport(mSmallViewportX, mSmallViewportY, mSmallViewportWidth, mSmallViewportHeight);
-                mProgramTextureOES.drawFrame(mCameraTexId, mTexMatrix, GlUtil.IDENTITY_MATRIX);
+                mProgramTextureOes.drawFrame(mCameraTexId, mTexMatrix, GlUtil.IDENTITY_MATRIX);
                 GLES20.glViewport(0, 0, mViewWidth, mViewHeight);
             }
             mGlSurfaceView.requestRender();
@@ -168,8 +168,13 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
     }
 
     @Override
-    protected void onResume() {
+    protected void onStart() {
+        super.onStart();
         startBackgroundThread();
+    }
+
+    @Override
+    protected void onResume() {
         mBackgroundHandler.post(new Runnable() {
             @Override
             public void run() {
@@ -182,6 +187,12 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
 
     @Override
     protected void onPause() {
+        mBackgroundHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                closeCamera();
+            }
+        });
         final CountDownLatch countDownLatch = new CountDownLatch(1);
         mGlSurfaceView.queueEvent(new Runnable() {
             @Override
@@ -196,12 +207,11 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
             // ignored
         }
         mGlSurfaceView.onPause();
-        mBackgroundHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                closeCamera();
-            }
-        });
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
         stopBackgroundThread();
     }
 
@@ -313,9 +323,9 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
             mProgramTexture2d.release();
             mProgramTexture2d = null;
         }
-        if (mProgramTextureOES != null) {
-            mProgramTextureOES.release();
-            mProgramTextureOES = null;
+        if (mProgramTextureOes != null) {
+            mProgramTextureOes.release();
+            mProgramTextureOes = null;
         }
         if (mSurfaceTexture != null) {
             mSurfaceTexture.release();
@@ -337,5 +347,4 @@ public class BaseCameraRenderer extends AbstractLifeCycleRenderer implements GLS
             mBackgroundHandler = null;
         }
     }
-
 }

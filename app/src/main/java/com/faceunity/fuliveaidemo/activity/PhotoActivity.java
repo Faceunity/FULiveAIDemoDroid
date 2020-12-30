@@ -48,6 +48,7 @@ public class PhotoActivity extends BaseGlActivity implements OnPhotoRendererList
     protected void initFuRenderer() {
         mFURenderer = new FURenderer.Builder(this)
                 .setInputTextureType(FURenderer.INPUT_TEXTURE_2D)
+                .setOnSystemErrorListener(this)
                 .build();
     }
 

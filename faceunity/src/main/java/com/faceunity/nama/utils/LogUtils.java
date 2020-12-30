@@ -8,7 +8,6 @@ import android.util.Log;
  * @author Richie on 2020.07.07
  */
 public final class LogUtils {
-    private static final String TAG = "LogUtils";
     private static final String GLOBAL_ATG = "[NAMA_LOG] ";
     /**
      * Log level

@@ -47,5 +47,7 @@
     <string name="tongue_track_left_down">舌头左下</string>
     <string name="tongue_track_right_up">舌头右上</string>
     <string name="tongue_track_right_down">舌头右下</string>
+    <string name="toast_invalid_auth">缺少证书，功能无效</string>
+    <string name="text_expression_list_tip">上滑列表滚动</string>
 
 </resources>

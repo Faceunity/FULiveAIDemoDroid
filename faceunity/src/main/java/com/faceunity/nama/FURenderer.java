@@ -28,7 +28,7 @@ import java.util.Set;
  * 4. 处理图像时调用 onDrawFrame，针对不同数据类型，提供了纹理和 buffer 输入多种方案
  * </p>
  */
-public class FURenderer {
+public final class FURenderer {
     private static final String TAG = "FURenderer";
     /**
      * 相机朝向，前置或后置
@@ -98,7 +98,7 @@ public class FURenderer {
     /* 递增的帧 ID */
     private int mFrameId = 0;
     /* 贴纸道具 */
-    private Set<Effect> mEffectList = new HashSet<>(8);
+    private final Set<Effect> mEffectList = new HashSet<>(8);
     /* 最大识别的人体数 */
     private int mMaxHumans = 1;
     /* 最大识别的人脸数 */
@@ -128,13 +128,15 @@ public class FURenderer {
     /* 人体跟随模式，默认全身 */
     private int mHumanTrackScene = HUMAN_TRACK_SCENE_FULL;
     /* 旋转图像使用 */
-    private faceunity.RotatedImage mRotatedImage = new faceunity.RotatedImage();
+    private final faceunity.RotatedImage mRotatedImage = new faceunity.RotatedImage();
+    /* controller 加载回调 */
+    private Callback mControllerCallback;
     /* 是否已经全局初始化，确保只初始化一次 */
     private static boolean sIsInited;
     /* 舌头、表情检测，欧拉角结果 */
-    private int[] mTongueDirection = new int[1];
-    private int[] mExpressionType = new int[1];
-    private float[] mRotationEuler = new float[3];
+    private final int[] mTongueDirection = new int[1];
+    private final int[] mExpressionType = new int[1];
+    private final float[] mRotationEuler = new float[3];
 
     /**
      * 初始化系统环境，加载底层数据，并进行网络鉴权。
@@ -190,6 +192,15 @@ public class FURenderer {
     }
 
     /**
+     * 获取证书的权限码
+     *
+     * @return module code
+     */
+    public static int getModuleCode(int index) {
+        return faceunity.fuGetModuleCode(index);
+    }
+
+    /**
      * 获取 Nama SDK 版本号，例如 7_1_0_phy_5cadfa8_f92de5b
      *
      * @return version
@@ -212,7 +223,7 @@ public class FURenderer {
     }
 
     /**
-     * 手势识别结果
+     * 手势识别类型
      */
     public static final class FuAiGestureType {
         public static final int FUAIGESTURE_UNKNOWN = 0;
@@ -237,7 +248,7 @@ public class FURenderer {
     }
 
     /**
-     * 舌头检测结果
+     * 舌头检测类型
      */
     public static final class FuAiTongueType {
         public static final int FUAITONGUE_UNKNOWN = 0;
@@ -254,16 +265,78 @@ public class FURenderer {
     }
 
     /**
-     * 表情识别结果
+     * 表情识别类型
      */
-    public static final class FuAiExpressionType {
-        public static final int FUAIEXPRESSION_UNKNOWN = 0;
-        public static final int FUAIEXPRESSION_SMILE = 1 << 1;
-        public static final int FUAIEXPRESSION_MOUTH_OPEN = 1 << 2;
-        public static final int FUAIEXPRESSION_EYE_BLINK = 1 << 3;
-        public static final int FUAIEXPRESSION_POUT = 1 << 4;
-        public static final int FUAIEXPRESSION_FROWN = 1 << 5;
-        public static final int FUAIEXPRESSION_PUFF_OUT_CHEEK = 1 << 6;
+    public static final class FaceExpressionType {
+        public static final int FACE_EXPRESSION_UNKONW = 0;
+        /**
+         * 抬眉毛
+         */
+        public static final int FACE_EXPRESSION_BROW_UP = 1 << 1;
+        /**
+         * 皱眉
+         */
+        public static final int FACE_EXPRESSION_BROW_FROWN = 1 << 2;
+        /**
+         * 闭左眼
+         */
+        public static final int FACE_EXPRESSION_LEFT_EYE_CLOSE = 1 << 3;
+        /**
+         * 闭右眼
+         */
+        public static final int FACE_EXPRESSION_RIGHT_EYE_CLOSE = 1 << 4;
+        /**
+         * 睁大眼睛
+         */
+        public static final int FACE_EXPRESSION_EYE_WIDE = 1 << 5;
+        /**
+         * 抬左嘴角
+         */
+        public static final int FACE_EXPRESSION_MOUTH_SMILE_LEFT = 1 << 6;
+        /**
+         * 抬右嘴角
+         */
+        public static final int FACE_EXPRESSION_MOUTH_SMILE_RIGHT = 1 << 7;
+        /**
+         * 嘴巴 欧
+         */
+        public static final int FACE_EXPRESSION_MOUTH_FUNNEL = 1 << 8;
+        /**
+         * 嘴巴 啊
+         */
+        public static final int FACE_EXPRESSION_MOUTH_OPEN = 1 << 9;
+        /**
+         * 嘟嘴
+         */
+        public static final int FACE_EXPRESSION_MOUTH_PUCKER = 1 << 10;
+        /**
+         * 抿嘴
+         */
+        public static final int FACE_EXPRESSION_MOUTH_ROLL = 1 << 11;
+        /**
+         * 鼓脸
+         */
+        public static final int FACE_EXPRESSION_MOUTH_PUFF = 1 << 12;
+        /**
+         * 微笑
+         */
+        public static final int FACE_EXPRESSION_MOUTH_SMILE = 1 << 13;
+        /**
+         * 撇嘴
+         */
+        public static final int FACE_EXPRESSION_MOUTH_FROWN = 1 << 14;
+        /**
+         * 左转头
+         */
+        public static final int FACE_EXPRESSION_HEAD_LEFT = 1 << 15;
+        /**
+         * 右转头
+         */
+        public static final int FACE_EXPRESSION_HEAD_RIGHT = 1 << 16;
+        /**
+         * 点头
+         */
+        public static final int FACE_EXPRESSION_HEAD_NOD = 1 << 17;
     }
 
     private FURenderer(Context context) {
@@ -296,7 +369,8 @@ public class FURenderer {
         faceunity.fuSetMaxFaces(mMaxFaces);
         // 异步加载图形道具
         if (mRenderMode == RENDER_MODE_CONTROLLER) {
-            loadController(null);
+            mRenderMode = RENDER_MODE_NORMAL;
+            loadController(mControllerCallback);
         } else {
             for (Effect effect : mEffectList) {
                 Message.obtain(mFuItemHandler, FUItemHandler.MESSAGE_WHAT_LOAD_EFFECT, effect).sendToTarget();
@@ -320,13 +394,14 @@ public class FURenderer {
         });
     }
 
-    public void loadController(final Runnable callback) {
+    public void loadController(final Callback callback) {
+        mControllerCallback = callback;
         if (mFuItemHandler != null) {
             Message.obtain(mFuItemHandler, FUItemHandler.MESSAGE_WHAT_LOAD_CONTROLLER, callback).sendToTarget();
         }
     }
 
-    public void destroyController(final Runnable callback) {
+    public void destroyController(final Callback callback) {
         queueEvent(new Runnable() {
             @Override
             public void run() {
@@ -344,7 +419,7 @@ public class FURenderer {
                     Message.obtain(mFuItemHandler, FUItemHandler.MESSAGE_WHAT_LOAD_EFFECT, effect).sendToTarget();
                 }
                 if (callback != null) {
-                    callback.run();
+                    callback.onSuccess();
                 }
             }
         });
@@ -521,17 +596,60 @@ public class FURenderer {
             faceunity.fuGetFaceInfo(0, "expression_type", expressionType);
             int et = expressionType[0];
             if (et > 0) {
-                if ((et & FuAiExpressionType.FUAIEXPRESSION_SMILE) != 0) {
-                    result[0] = FuAiExpressionType.FUAIEXPRESSION_SMILE;
+                int index = 0;
+                if ((et & FaceExpressionType.FACE_EXPRESSION_BROW_UP) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_BROW_UP;
                 }
-                if ((et & FuAiExpressionType.FUAIEXPRESSION_MOUTH_OPEN) != 0) {
-                    result[1] = FuAiExpressionType.FUAIEXPRESSION_MOUTH_OPEN;
+                if ((et & FaceExpressionType.FACE_EXPRESSION_BROW_FROWN) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_BROW_FROWN;
                 }
-                if ((et & FuAiExpressionType.FUAIEXPRESSION_EYE_BLINK) != 0) {
-                    result[2] = FuAiExpressionType.FUAIEXPRESSION_EYE_BLINK;
+                if ((et & FaceExpressionType.FACE_EXPRESSION_LEFT_EYE_CLOSE) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_LEFT_EYE_CLOSE;
                 }
-                if ((et & FuAiExpressionType.FUAIEXPRESSION_POUT) != 0) {
-                    result[3] = FuAiExpressionType.FUAIEXPRESSION_POUT;
+                if ((et & FaceExpressionType.FACE_EXPRESSION_RIGHT_EYE_CLOSE) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_RIGHT_EYE_CLOSE;
+                }
+                if ((et & FaceExpressionType.FACE_EXPRESSION_EYE_WIDE) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_EYE_WIDE;
+                }
+                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_LEFT) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_LEFT;
+                }
+                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT;
+                }
+                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT;
+                }
+                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_FUNNEL) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_FUNNEL;
+                }
+                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_OPEN) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_OPEN;
+                }
+                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_PUCKER) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_PUCKER;
+                }
+                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_ROLL) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_ROLL;
+                }
+                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_PUFF) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_PUFF;
+                }
+                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE;
+                }
+                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_FROWN) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_FROWN;
+                }
+                if ((et & FaceExpressionType.FACE_EXPRESSION_HEAD_LEFT) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_HEAD_LEFT;
+                }
+                if ((et & FaceExpressionType.FACE_EXPRESSION_HEAD_RIGHT) != 0) {
+                    result[index++] = FaceExpressionType.FACE_EXPRESSION_HEAD_RIGHT;
+                }
+                if ((et & FaceExpressionType.FACE_EXPRESSION_HEAD_NOD) != 0) {
+                    result[index] = FaceExpressionType.FACE_EXPRESSION_HEAD_NOD;
                 }
             }
         }
@@ -847,9 +965,6 @@ public class FURenderer {
         if (errorCode != 0) {
             String errorMessage = faceunity.fuGetSystemErrorString(errorCode);
             LogUtils.error(TAG, "system error code: %d, error message: %s", errorCode, errorMessage);
-            if (mOnSystemErrorListener != null) {
-                mOnSystemErrorListener.onSystemError(errorMessage);
-            }
         }
 
         synchronized (this) {
@@ -1122,11 +1237,11 @@ public class FURenderer {
 
     public interface OnSystemErrorListener {
         /**
-         * SDK 发生错误时调用
+         * 加载 effect 出现错误
          *
-         * @param error 错误消息
+         * @param effect
          */
-        void onSystemError(String error);
+        void onSystemError(Effect effect);
     }
 
     private OnSystemErrorListener mOnSystemErrorListener;
@@ -1173,6 +1288,21 @@ public class FURenderer {
         }
     }
 
+    private static boolean isEffectModuleEnable(Effect effect) {
+        String authCode = effect.getAuthCode();
+        if (authCode != null) {
+            String[] codeStr = authCode.split("-");
+            if (codeStr.length == 2) {
+                int moduleCode0 = FURenderer.getModuleCode(0);
+                int moduleCode1 = FURenderer.getModuleCode(1);
+                int code0 = Integer.parseInt(codeStr[0]);
+                int code1 = Integer.parseInt(codeStr[1]);
+                return (moduleCode0 == 0 && moduleCode1 == 0) || ((code0 & moduleCode0) > 0 || (code1 & moduleCode1) > 0);
+            }
+        }
+        return false;
+    }
+
     //--------------------------------------IO handler 线程异步加载道具-------------------------------------
 
     private class FUItemHandler extends Handler {
@@ -1193,6 +1323,13 @@ public class FURenderer {
                 }
                 final int itemEffect = BundleUtils.loadItem(mContext, effect.getFilePath());
                 effect.setHandle(itemEffect);
+                boolean enable = isEffectModuleEnable(effect);
+                if (!enable) {
+                    if (mOnSystemErrorListener != null) {
+                        mOnSystemErrorListener.onSystemError(effect);
+                    }
+                    return;
+                }
                 if (itemEffect <= 0) {
                     LogUtils.warn(TAG, "load item failed: %d", itemEffect);
                     return;
@@ -1238,9 +1375,13 @@ public class FURenderer {
                     }
                 });
             } else if (msg.what == MESSAGE_WHAT_LOAD_CONTROLLER) {
+                final FURenderer.Callback callback = (FURenderer.Callback) msg.obj;
                 int[] defaultItems = new int[3];
                 final int controllerItem = BundleUtils.loadItem(mContext, ASSETS_DIR_GRAPHICS + "controller.bundle");
                 if (controllerItem <= 0) {
+                    if (callback != null) {
+                        callback.onFailure();
+                    }
                     return;
                 }
                 final int controllerConfigItem = BundleUtils.loadItem(mContext, ASSETS_DIR_PTA + "controller_config.bundle");
@@ -1296,7 +1437,6 @@ public class FURenderer {
                 System.arraycopy(validGestureItems, 0, controllerBoundItems, validDefaultItems.length, validGestureItems.length);
                 mControllerBoundItems = controllerBoundItems;
                 LogUtils.debug(TAG, "run: controller all bind item %s", Arrays.toString(controllerBoundItems));
-                final Runnable callback = (Runnable) msg.obj;
                 queueEvent(new Runnable() {
                     @Override
                     public void run() {
@@ -1326,7 +1466,7 @@ public class FURenderer {
                         resetTrackStatus();
 
                         if (callback != null) {
-                            callback.run();
+                            callback.onSuccess();
                         }
                     }
                 });
@@ -1516,4 +1656,15 @@ public class FURenderer {
         }
     }
 
+    public interface Callback {
+        /**
+         * 成功
+         */
+        void onSuccess();
+
+        /**
+         * 失败
+         */
+        void onFailure();
+    }
 }

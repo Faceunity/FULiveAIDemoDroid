@@ -44,7 +44,7 @@ import java.util.Map;
  * @author Richie on 2020.05.21
  */
 public abstract class BaseGlActivity extends AppCompatActivity implements PhotoTaker.OnPictureTakeListener,
-        OnRendererListener {
+        OnRendererListener, FURenderer.OnSystemErrorListener {
     private static final String TAG = "BaseGlActivity";
     public static final int RECOGNITION_TYPE_GESTURE = 421;
     public static final int RECOGNITION_TYPE_ACTION = 230;
@@ -55,6 +55,9 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     private ConfigFragment mConfigFragment;
     private View mViewMask;
     protected TextView mTvTrackStatus;
+    private View mIvHeaderMask;
+    private View mIvFooterMask;
+    private View mTvExpressionTip;
     protected GLSurfaceView mGlSurfaceView;
     protected PhotoTaker mPhotoTaker;
     protected ViewClickListener mViewClickListener;
@@ -80,7 +83,7 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     private LifecycleHandler mLifecycleHandler;
     private Effect mFaceLandmarksEffect;
     private Effect mAiTypeEffect;
-    private Runnable mUpdateHumanRecyclerTask = new Runnable() {
+    private final Runnable mUpdateHumanRecyclerTask = new Runnable() {
         @Override
         public void run() {
             int gap = 0;
@@ -100,7 +103,7 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
             }
         }
     };
-    private Runnable mUpdateExpressionRecyclerTask = new Runnable() {
+    private final Runnable mUpdateExpressionRecyclerTask = new Runnable() {
         @Override
         public void run() {
             mExpressionAdapter.clearMultiItemSelected();
@@ -111,7 +114,7 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
             }
         }
     };
-    private Runnable mUpdateTongueRecyclerTask = new Runnable() {
+    private final Runnable mUpdateTongueRecyclerTask = new Runnable() {
         @Override
         public void run() {
             int detectTongueIndex = mDetectTongueIndex;
@@ -150,10 +153,10 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
 
         Map<String, Object> paramMap = new HashMap<>(4);
         paramMap.put(ConfigFragment.LANDMARKS_TYPE, FURenderer.FACE_LANDMARKS_239);
-        mFaceLandmarksEffect = new Effect(ConfigFragment.FACE_LANDMARKS_BUNDLE_PATH, getString(R.string.config_item_face_landmarks_75), Effect.TYPE_FACE, paramMap);
+        mFaceLandmarksEffect = new Effect(ConfigFragment.FACE_LANDMARKS_BUNDLE_PATH, getString(R.string.config_item_face_landmarks_75), Effect.TYPE_FACE, Effect.MODULE_CODE_FACE_LANDMARKS, paramMap);
         paramMap = new HashMap<>(4);
-        paramMap.put("aitype", FURenderer.TRACK_TYPE_FACE);
-        mAiTypeEffect = new Effect(ConfigFragment.FACE_EXPRESSION_BUNDLE_PATH, getString(R.string.config_item_face_expression), Effect.TYPE_FACE, paramMap);
+        paramMap.put("aitype", 1 << 15); // FACEPROCESSOR_EXPRESSION_RECOGNIZER
+        mAiTypeEffect = new Effect(ConfigFragment.FACE_EXPRESSION_BUNDLE_PATH, getString(R.string.config_item_face_expression), Effect.TYPE_FACE, Effect.MODULE_CODE_FACE_EXPRESSION, paramMap);
     }
 
     @Override
@@ -161,7 +164,6 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         mFURenderer.onSurfaceCreated();
         if (mFaceLandmarksEffect != null) {
             mFURenderer.selectEffect(mFaceLandmarksEffect);
-            mFURenderer.selectEffect(mAiTypeEffect);
         }
     }
 
@@ -193,6 +195,16 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
             @Override
             public void run() {
                 ToastUtil.makeText(BaseGlActivity.this, R.string.save_photo_failure).show();
+            }
+        });
+    }
+
+    @Override
+    public void onSystemError(final Effect effect) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                ToastUtil.makeText(BaseGlActivity.this, getResources().getString(R.string.toast_invalid_auth)).show();
             }
         });
     }
@@ -295,7 +307,7 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
             int[] expressionTypeResult = mDetectExpressionTypes;
             mFURenderer.detectFaceExpression(expressionTypeResult);
             for (int i = 0; i < expressionTypeResult.length; i++) {
-                mDetectExpressionIndexes[i] = convertToExpressionIndex(expressionTypeResult[i]);
+                mDetectExpressionIndexes[i] = convertToExpressionIndex(expressionTypeResult[i], mIsFlipX);
             }
             mLifecycleHandler.post(mUpdateExpressionRecyclerTask);
         }
@@ -332,19 +344,58 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         }
     }
 
-    private static int convertToExpressionIndex(int type) {
+    private static int convertToExpressionIndex(int type, boolean isFlipX) {
         switch (type) {
-            case FURenderer.FuAiExpressionType.FUAIEXPRESSION_SMILE: {
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_BROW_UP: {
                 return 0;
             }
-            case FURenderer.FuAiExpressionType.FUAIEXPRESSION_MOUTH_OPEN: {
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_BROW_FROWN: {
                 return 1;
             }
-            case FURenderer.FuAiExpressionType.FUAIEXPRESSION_EYE_BLINK: {
-                return 2;
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_RIGHT_EYE_CLOSE: {
+                return isFlipX ? 2 : 3;
             }
-            case FURenderer.FuAiExpressionType.FUAIEXPRESSION_POUT: {
-                return 3;
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_LEFT_EYE_CLOSE: {
+                return isFlipX ? 3 : 2;
+            }
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_EYE_WIDE: {
+                return 4;
+            }
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT: {
+                return isFlipX ? 5 : 6;
+            }
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_LEFT: {
+                return isFlipX ? 6 : 5;
+            }
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE: {
+                return 7;
+            }
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_FUNNEL: {
+                return 8;
+            }
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_OPEN: {
+                return 9;
+            }
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_PUCKER: {
+                return 10;
+            }
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_ROLL: {
+                return 11;
+            }
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_PUFF: {
+                return 12;
+            }
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_FROWN: {
+                return 13;
+            }
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_HEAD_RIGHT: {
+                return isFlipX ? 14 : 15;
+            }
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_HEAD_LEFT: {
+                return isFlipX ? 15 : 14;
+            }
+            case FURenderer.FaceExpressionType.FACE_EXPRESSION_HEAD_NOD: {
+                return 16;
             }
             default:
                 return -1;
@@ -440,20 +491,36 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     }
 
     public void setExpressionRecyclerVisibility(boolean visible) {
-        mRvExpression.setVisibility(visible ? View.VISIBLE : View.GONE);
+        int visibility = visible ? View.VISIBLE : View.GONE;
+        mRvExpression.setVisibility(visibility);
         if (mExpressionAdapter == null) {
             List<Integer> list = initExpressionList();
             mExpressionAdapter = new ExpressionAdapter(new ArrayList<>(list));
             mExpressionAdapter.setCanManualClick(false);
             mRvExpression.setHasFixedSize(true);
+            mIvHeaderMask = findViewById(R.id.iv_rv_expression_header_mask);
+            mIvFooterMask = findViewById(R.id.iv_rv_expression_footer_mask);
+            mTvExpressionTip = findViewById(R.id.tv_expression_tip);
             ((SimpleItemAnimator) mRvExpression.getItemAnimator()).setSupportsChangeAnimations(false);
-            RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+            LinearLayoutManager layoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
             mRvExpression.setLayoutManager(layoutManager);
             mRvExpression.setAdapter(mExpressionAdapter);
+            mRvExpression.addOnScrollListener(new RecyclerView.OnScrollListener() {
+                @Override
+                public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                    super.onScrolled(recyclerView, dx, dy);
+                    boolean canScrollFoot = recyclerView.canScrollVertically(1);
+                    boolean canScrollHead = recyclerView.canScrollVertically(-1);
+                    mIvHeaderMask.setVisibility(canScrollHead ? View.VISIBLE : View.INVISIBLE);
+                    mIvFooterMask.setVisibility(canScrollFoot ? View.VISIBLE : View.INVISIBLE);
+                }
+            });
             int size = list.size();
             mDetectExpressionTypes = new int[size];
             mDetectExpressionIndexes = new int[size];
         }
+        mIvHeaderMask.setVisibility(visibility);
+        mIvFooterMask.setVisibility(visibility);
         mIsDetectExpression = visible;
     }
 
@@ -512,14 +579,25 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
 
     public void setRenderMode(final int renderMode) {
         final Dialog dialog = createLoadingDialog();
-        Runnable callback = new Runnable() {
+        FURenderer.Callback callback = new FURenderer.Callback() {
             @Override
-            public void run() {
+            public void onSuccess() {
                 onRenderModeChanged(renderMode);
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         dialog.dismiss();
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        dialog.dismiss();
+                        ToastUtil.makeText(BaseGlActivity.this, getResources().getString(R.string.toast_invalid_auth)).show();
                     }
                 });
             }
@@ -601,12 +679,24 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     }
 
     private List<Integer> initExpressionList() {
-        List<Integer> expressionList = new ArrayList<>(8);
+        List<Integer> expressionList = new ArrayList<>(18);
+        expressionList.add(R.drawable.demo_expression_icon_raise_eyebrows);
+        expressionList.add(R.drawable.demo_expression_icon_frown);
+        expressionList.add(R.drawable.demo_expression_icon_close_left_eye);
+        expressionList.add(R.drawable.demo_expression_icon_close_right_eye);
+        expressionList.add(R.drawable.demo_expression_icon_eyes_wide_open);
+        expressionList.add(R.drawable.demo_expression_icon_left_corner_of_mouth);
+        expressionList.add(R.drawable.demo_expression_icon_right_corner_of_mouth);
         expressionList.add(R.drawable.demo_expression_icon_smile);
-        expressionList.add(R.drawable.demo_expression_icon_open_mouth);
-        expressionList.add(R.drawable.demo_expression_icon_wink);
+        expressionList.add(R.drawable.demo_expression_icon_mouth_o);
+        expressionList.add(R.drawable.demo_expression_icon_mouth_a);
         expressionList.add(R.drawable.demo_expression_icon_pouting);
-//        expressionList.add(R.drawable.demo_expression_icon_frown);
+        expressionList.add(R.drawable.demo_expression_icon_uting_mouth);
+        expressionList.add(R.drawable.demo_expression_icon_bulging);
+        expressionList.add(R.drawable.demo_expression_icon_twitch);
+        expressionList.add(R.drawable.demo_expression_icon_turn_left);
+        expressionList.add(R.drawable.demo_expression_icon_turn_right);
+        expressionList.add(R.drawable.demo_expression_icon_nod);
         return Collections.unmodifiableList(expressionList);
     }
 
@@ -672,8 +762,8 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     }
 
     private static class RecognitionListData {
-        private int iconId;
-        private boolean transparent;
+        private final int iconId;
+        private final boolean transparent;
 
         RecognitionListData(int iconId, boolean transparent) {
             this.iconId = iconId;
@@ -696,6 +786,27 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
                     fragmentTransaction.setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_right);
                     if (mConfigFragment == null) {
                         mConfigFragment = ConfigFragment.newInstance(containHumanAvatar());
+                        mConfigFragment.setOnFragmentHiddenListener(new ConfigFragment.OnFragmentHiddenListener() {
+                            @Override
+                            public void onHiddenChanged(boolean hidden) {
+                                if (!hidden) {
+                                    return;
+                                }
+                                if (mRvExpression.getVisibility() == View.VISIBLE) {
+                                    mTvExpressionTip.setVisibility(View.VISIBLE);
+                                    mLifecycleHandler.postDelayed(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            mTvExpressionTip.setVisibility(View.INVISIBLE);
+                                        }
+                                    }, 1500);
+                                } else {
+                                    if (mTvExpressionTip != null) {
+                                        mTvExpressionTip.setVisibility(View.GONE);
+                                    }
+                                }
+                            }
+                        });
                         fragmentTransaction.add(R.id.fl_fragment_container, mConfigFragment, ConfigFragment.TAG);
                     } else {
                         fragmentTransaction.show(mConfigFragment);

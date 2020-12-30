@@ -4,5 +4,5 @@
     android:id="@+id/iv_item_expression"
     android:layout_width="40dp"
     android:layout_height="40dp"
-    tools:src="@drawable/demo_expression_icon_kiss"
+    tools:src="@drawable/demo_expression_icon_raise_eyebrows"
     android:background="@drawable/selector_expression_item_mid" />

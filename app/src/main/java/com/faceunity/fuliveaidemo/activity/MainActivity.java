@@ -19,6 +19,7 @@ import com.faceunity.fuliveaidemo.util.PermissionUtil;
 import com.faceunity.fuliveaidemo.util.ScreenUtils;
 import com.faceunity.fuliveaidemo.util.ToastUtil;
 import com.faceunity.fuliveaidemo.util.UriUtil;
+import com.faceunity.fuliveaidemo.view.OnMultiClickListener;
 import com.faceunity.nama.utils.LogUtils;
 
 import java.io.File;
@@ -49,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
         private static final int ANIMATION_DURATION = 60;
         private int mLongPressTimeout = ViewConfiguration.getLongPressTimeout();
         private long mStartTimestamp;
+        private long mLastClickTime;
 
         @Override
         public boolean onTouch(View v, MotionEvent event) {
@@ -61,7 +63,9 @@ public class MainActivity extends AppCompatActivity {
                 case MotionEvent.ACTION_UP: {
                     v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(ANIMATION_DURATION).start();
 
-                    if (System.currentTimeMillis() - mStartTimestamp < mLongPressTimeout) {
+                    long current = System.currentTimeMillis();
+                    if (current - mLastClickTime > OnMultiClickListener.MIN_CLICK_DELAY_TIME
+                            && current - mStartTimestamp < mLongPressTimeout) {
                         switch (v.getId()) {
                             case R.id.cv_camera: {
                                 Intent intent = new Intent(MainActivity.this, CameraActivity.class);
@@ -73,7 +77,8 @@ public class MainActivity extends AppCompatActivity {
                                 intentPhoto.setAction(Intent.ACTION_OPEN_DOCUMENT);
                                 intentPhoto.addCategory(Intent.CATEGORY_OPENABLE);
                                 intentPhoto.setType("image/*");
-                                ResolveInfo resolveInfo = getPackageManager().resolveActivity(intentPhoto, PackageManager.MATCH_DEFAULT_ONLY);
+                                ResolveInfo resolveInfo = getPackageManager().resolveActivity(intentPhoto,
+                                        PackageManager.MATCH_DEFAULT_ONLY);
                                 if (resolveInfo == null) {
                                     intentPhoto.setAction(Intent.ACTION_GET_CONTENT);
                                     intentPhoto.removeCategory(Intent.CATEGORY_OPENABLE);
@@ -84,6 +89,7 @@ public class MainActivity extends AppCompatActivity {
                             default:
                         }
                     }
+                    mLastClickTime = System.currentTimeMillis();
                     mStartTimestamp = 0;
                 }
                 default:
