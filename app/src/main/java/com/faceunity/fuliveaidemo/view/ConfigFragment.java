@@ -283,8 +283,8 @@ public class ConfigFragment extends Fragment {
         private int mHumanState = HUMAN_STATE_NONE;
         private ValueAnimator mExpandAnimator;
         private ValueAnimator mShrinkAnimator;
-        private int mPx24 = DensityUtils.dp2px(mBaseGlActivity, 24);
-        private int mPx72 = DensityUtils.dp2px(mBaseGlActivity, 72);
+        private final int mPx24 = DensityUtils.dp2px(mBaseGlActivity, 24);
+        private final int mPx72 = DensityUtils.dp2px(mBaseGlActivity, 72);
 
         void clickLandmarks() {
             if (mHumanState == HUMAN_STATE_FULL || mHumanState == HUMAN_STATE_HALF) {
@@ -397,6 +397,7 @@ public class ConfigFragment extends Fragment {
                                 adapter.clearItemSelected(expression);
                                 mBaseGlActivity.setExpressionRecyclerVisibility(false);
                             }
+                            mBaseGlActivity.getFuRenderer().unselectEffect(mEffectMap.get(Effect.TYPE_FACE).get(2));
                         }
                     } else if (getResources().getString(R.string.config_item_face_tongue).equals(description)) {
                         Effect landmarks75 = null;
@@ -436,7 +437,6 @@ public class ConfigFragment extends Fragment {
                             }
                         }
                         mBaseGlActivity.setExpressionRecyclerVisibility(!isSelected);
-                        return;
                     }
                 }
                 clickEffect(item, !isSelected);
@@ -643,7 +643,7 @@ public class ConfigFragment extends Fragment {
                     handleEffectSelection(mEffectMap.get(Effect.TYPE_SEGMENTATION), mSegRecyclerAdapter.getSelectedItems());
                     handleEffectSelection(mEffectMap.get(Effect.TYPE_ACTION), mActionRecyclerAdapter.getSelectedItems());
                     // reselect aitype
-                    mBaseGlActivity.getFuRenderer().selectEffect(new Effect(mBaseGlActivity.getAiTypeEffect()));
+//                    mBaseGlActivity.getFuRenderer().selectEffect(new Effect(mBaseGlActivity.getAiTypeEffect()));
 
                     enableRecyclerItem(Effect.TYPE_FACE, mFaceRecyclerAdapter);
                     enableRecyclerItem(Effect.TYPE_HUMAN, mHumanRecyclerAdapter);
@@ -777,34 +777,34 @@ public class ConfigFragment extends Fragment {
 
         List<Effect> faceEffects = new ArrayList<>();
         faceEffects.add(mBaseGlActivity.getFaceLandmarksEffect());
-        faceEffects.add(new Effect(FACE_TONGUE_BUNDLE_PATH, resources.getString(R.string.config_item_face_tongue), Effect.TYPE_FACE));
+        faceEffects.add(new Effect(FACE_TONGUE_BUNDLE_PATH, resources.getString(R.string.config_item_face_tongue), Effect.TYPE_FACE, Effect.MODULE_CODE_FACE_TONGUE));
         faceEffects.add(mBaseGlActivity.getAiTypeEffect());
         effectMap.put(Effect.TYPE_FACE, Collections.unmodifiableList(faceEffects));
 
         List<Effect> humanEffects = new ArrayList<>();
-        humanEffects.add(new Effect("", resources.getString(R.string.config_item_human_landmark), Effect.TYPE_HUMAN));
+        humanEffects.add(new Effect("", resources.getString(R.string.config_item_human_landmark), Effect.TYPE_HUMAN, Effect.MODULE_CODE_HUMAN_LANDMARKS));
         if (containHumanAvatar) {
-            humanEffects.add(new Effect("", resources.getString(R.string.config_item_human_skeleton), Effect.TYPE_HUMAN));
+            humanEffects.add(new Effect("", resources.getString(R.string.config_item_human_skeleton), Effect.TYPE_HUMAN, Effect.MODULE_CODE_HUMAN_SKELETON));
         }
         effectMap.put(Effect.TYPE_HUMAN, Collections.unmodifiableList(humanEffects));
 
         List<Effect> gestureEffects = new ArrayList<>();
-        gestureEffects.add(new Effect(HUMAN_GESTURE_BUNDLE_PATH, resources.getString(R.string.config_item_gesture_recognition), Effect.TYPE_GESTURE));
+        gestureEffects.add(new Effect(HUMAN_GESTURE_BUNDLE_PATH, resources.getString(R.string.config_item_gesture_recognition), Effect.TYPE_GESTURE, Effect.MODULE_CODE_HAND_GESTURE));
         effectMap.put(Effect.TYPE_GESTURE, Collections.unmodifiableList(gestureEffects));
 
         List<Effect> segEffects = new ArrayList<>();
-        segEffects.add(new Effect(HUMAN_MASK_BUNDLE_PATH, resources.getString(R.string.config_item_seg_portrait), Effect.TYPE_SEGMENTATION));
-        segEffects.add(new Effect(HAIR_MASK_BUNDLE_PATH, resources.getString(R.string.config_item_seg_hair), Effect.TYPE_SEGMENTATION));
-        segEffects.add(new Effect(HEAD_MASK_BUNDLE_PATH, resources.getString(R.string.config_item_seg_head), Effect.TYPE_SEGMENTATION));
+        segEffects.add(new Effect(HUMAN_MASK_BUNDLE_PATH, resources.getString(R.string.config_item_seg_portrait), Effect.TYPE_SEGMENTATION, Effect.MODULE_CODE_HUMAN_SEGMENTATION));
+        segEffects.add(new Effect(HAIR_MASK_BUNDLE_PATH, resources.getString(R.string.config_item_seg_hair), Effect.TYPE_SEGMENTATION, Effect.MODULE_CODE_HAIR_SEGMENTATION));
+        segEffects.add(new Effect(HEAD_MASK_BUNDLE_PATH, resources.getString(R.string.config_item_seg_head), Effect.TYPE_SEGMENTATION, Effect.MODULE_CODE_HEAD_SEGMENTATION));
         effectMap.put(Effect.TYPE_SEGMENTATION, Collections.unmodifiableList(segEffects));
 
         List<Effect> actionEffects = new ArrayList<>();
-        actionEffects.add(new Effect(HUMAN_ACTION_BUNDLE_PATH, resources.getString(R.string.config_item_action_recognition), Effect.TYPE_ACTION));
+        actionEffects.add(new Effect(HUMAN_ACTION_BUNDLE_PATH, resources.getString(R.string.config_item_action_recognition), Effect.TYPE_ACTION, Effect.MODULE_CODE_ACTION));
         effectMap.put(Effect.TYPE_ACTION, Collections.unmodifiableList(actionEffects));
         mEffectMap = Collections.unmodifiableMap(effectMap);
 
-        mHalfEffect = new Effect(HALF_BODY_LANDMARKS_BUNDLE_PATH);
-        mFullEffect = new Effect(FULL_BODY_LANDMARKS_BUNDLE_PATH);
+        mHalfEffect = new Effect(HALF_BODY_LANDMARKS_BUNDLE_PATH, Effect.MODULE_CODE_HUMAN_LANDMARKS);
+        mFullEffect = new Effect(FULL_BODY_LANDMARKS_BUNDLE_PATH, Effect.MODULE_CODE_HUMAN_LANDMARKS);
 
         Map<Effect, List<Effect>> mutexMap = new HashMap<>(16);
         List<Effect> mutexEffect = new ArrayList<>();
@@ -884,4 +884,26 @@ public class ConfigFragment extends Fragment {
         mMutexMap = Collections.unmodifiableMap(mutexMap);
     }
 
+    @Override
+    public void onHiddenChanged(boolean hidden) {
+        super.onHiddenChanged(hidden);
+        if (mOnFragmentHiddenListener != null) {
+            mOnFragmentHiddenListener.onHiddenChanged(hidden);
+        }
+    }
+
+    private OnFragmentHiddenListener mOnFragmentHiddenListener;
+
+    public void setOnFragmentHiddenListener(OnFragmentHiddenListener onFragmentHiddenListener) {
+        mOnFragmentHiddenListener = onFragmentHiddenListener;
+    }
+
+    public interface OnFragmentHiddenListener {
+        /**
+         * fragment 可见性变化
+         *
+         * @param hidden
+         */
+        void onHiddenChanged(boolean hidden);
+    }
 }

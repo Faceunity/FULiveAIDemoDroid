@@ -32,5 +32,7 @@
     <color name="bg_gesture_normal">#FF33334D</color>
     <color name="bg_loading_dialog">#B0111216</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="list_mask_start_color">#00FFFFFF</color>
+    <color name="list_mask_end_color">#70FFFFFF</color>
 
 </resources>

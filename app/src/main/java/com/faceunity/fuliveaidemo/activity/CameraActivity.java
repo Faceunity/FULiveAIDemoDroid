@@ -67,6 +67,7 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
                 .setCameraFacing(mCameraRenderer.getCameraFacing())
                 .setInputTextureType(FURenderer.INPUT_TEXTURE_EXTERNAL_OES)
                 .setInputImageOrientation(CameraUtils.getCameraOrientation(mCameraRenderer.getCameraFacing()))
+                .setOnSystemErrorListener(this)
                 .setRunBenchmark(true)
                 .setOnDebugListener(this)
                 .build();
@@ -76,6 +77,12 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
     protected void initGlRenderer() {
         mCameraRenderer = new Camera1Renderer(getLifecycle(), this, mGlSurfaceView, this);
         mIsFlipX = mCameraRenderer.getCameraFacing() == FURenderer.CAMERA_FACING_FRONT;
+    }
+
+    @Override
+    public void onSurfaceCreated() {
+        super.onSurfaceCreated();
+        mCameraRenderer.setRenderRotatedImage(false);
     }
 
     @Override

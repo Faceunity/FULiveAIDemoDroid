@@ -15,6 +15,11 @@ public abstract class AbstractLifeCycleRenderer implements LifecycleObserver {
         mLifecycle = lifecycle;
     }
 
+    @OnLifecycleEvent(Lifecycle.Event.ON_START)
+    protected void onStart() {
+
+    }
+
     @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
     protected void onResume() {
 
@@ -22,6 +27,11 @@ public abstract class AbstractLifeCycleRenderer implements LifecycleObserver {
 
     @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
     protected void onPause() {
+
+    }
+
+    @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
+    protected void onStop() {
 
     }
 
