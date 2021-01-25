@@ -916,16 +916,18 @@ public final class FURenderer {
         }
 
         destroyControllerRelated();
-        for (int item : mItemsArray) {
-            if (item > 0) {
-                faceunity.fuDestroyItem(item);
+        if (mItemsArray != null) {
+            for (int item : mItemsArray) {
+                if (item > 0) {
+                    faceunity.fuDestroyItem(item);
+                }
             }
+            Arrays.fill(mItemsArray, 0);
+            for (Effect effect : mEffectList) {
+                effect.setHandle(0);
+            }
+            mItemsArray = null;
         }
-        Arrays.fill(mItemsArray, 0);
-        for (Effect effect : mEffectList) {
-            effect.setHandle(0);
-        }
-        mItemsArray = null;
         faceunity.fuOnCameraChange();
         faceunity.fuHumanProcessorReset();
         faceunity.fuDone();

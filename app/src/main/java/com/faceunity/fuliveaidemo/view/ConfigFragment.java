@@ -49,16 +49,16 @@ import java.util.Set;
 public class ConfigFragment extends Fragment {
     public static final String TAG = "ConfigFragment";
     private static final String ASSETS_DIR = "others/";
-    public static final String FACE_LANDMARKS_BUNDLE_PATH = ASSETS_DIR + "landmarks.bundle";
-    private static final String FACE_TONGUE_BUNDLE_PATH = ASSETS_DIR + "set_tongue.bundle";
-    public static final String FACE_EXPRESSION_BUNDLE_PATH = ASSETS_DIR + "aitype.bundle";
-    private static final String HUMAN_MASK_BUNDLE_PATH = ASSETS_DIR + "human_mask.bundle";
-    private static final String HUMAN_ACTION_BUNDLE_PATH = ASSETS_DIR + "human_action.bundle";
-    private static final String HUMAN_GESTURE_BUNDLE_PATH = ASSETS_DIR + "human_gesture.bundle";
-    private static final String HAIR_MASK_BUNDLE_PATH = ASSETS_DIR + "hair_normal_algorithm.bundle";
-    private static final String HEAD_MASK_BUNDLE_PATH = ASSETS_DIR + "head_mask.bundle";
-    private static final String FULL_BODY_LANDMARKS_BUNDLE_PATH = ASSETS_DIR + "bodyLandmarks_dance.bundle";
-    private static final String HALF_BODY_LANDMARKS_BUNDLE_PATH = ASSETS_DIR + "bodyLandmarks_selife.bundle";
+    public static final String FACE_LANDMARKS_BUNDLE_PATH = ASSETS_DIR + "landmarks.bundle"; // 人脸特征点
+    private static final String FACE_TONGUE_BUNDLE_PATH = ASSETS_DIR + "set_tongue.bundle"; // 舌头检测
+    public static final String FACE_EXPRESSION_BUNDLE_PATH = ASSETS_DIR + "aitype.bundle"; // 表情识别
+    private static final String HUMAN_MASK_BUNDLE_PATH = ASSETS_DIR + "human_mask.bundle"; // 人像分割
+    private static final String HUMAN_ACTION_BUNDLE_PATH = ASSETS_DIR + "human_action.bundle"; // 动作识别
+    private static final String HUMAN_GESTURE_BUNDLE_PATH = ASSETS_DIR + "human_gesture.bundle"; // 手势识别
+    private static final String HAIR_MASK_BUNDLE_PATH = ASSETS_DIR + "hair_normal_algorithm.bundle"; // 头发分割
+    private static final String HEAD_MASK_BUNDLE_PATH = ASSETS_DIR + "head_mask.bundle"; // 头部分割
+    private static final String FULL_BODY_LANDMARKS_BUNDLE_PATH = ASSETS_DIR + "bodyLandmarks_dance.bundle"; // 人体关键点 全身
+    private static final String HALF_BODY_LANDMARKS_BUNDLE_PATH = ASSETS_DIR + "bodyLandmarks_selife.bundle"; // 人体关键点 半身
 
     /**
      * 人体检测绘制类型，关键点和骨骼
