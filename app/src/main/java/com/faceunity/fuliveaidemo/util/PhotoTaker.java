@@ -3,6 +3,7 @@ package com.faceunity.fuliveaidemo.util;
 import android.graphics.Bitmap;
 
 import java.io.File;
+import java.util.Arrays;
 
 /**
  * 拍照
@@ -12,15 +13,18 @@ import java.io.File;
 public final class PhotoTaker {
     private volatile boolean mIsTaking = false;
     private volatile boolean mIsToTake = false;
+    private boolean mFlipX;
+    private boolean mFlipY;
     private OnPictureTakeListener mOnPictureTakeListener;
 
-    private BitmapUtil.OnReadBitmapListener mOnReadBitmapListener = new BitmapUtil.OnReadBitmapListener() {
+    private final BitmapUtil.OnReadBitmapListener mOnReadBitmapListener = new BitmapUtil.OnReadBitmapListener() {
 
         @Override
         public void onReadBitmapListener(Bitmap bitmap) {
             // call on async thread
             File file = new File(Constant.PHOTO_FILE_PATH, Constant.APP_NAME + "_" + DateUtil.getCurrentDate() + ".jpg");
             boolean result = FileUtils.saveBitmap(bitmap, file);
+            bitmap.recycle();
             if (mOnPictureTakeListener != null) {
                 if (result) {
                     mOnPictureTakeListener.onPictureTakeSucceed(file.getAbsolutePath());
@@ -35,6 +39,14 @@ public final class PhotoTaker {
         mOnPictureTakeListener = onPictureTakeListener;
     }
 
+    public void setFlipX(boolean flipX) {
+        mFlipX = flipX;
+    }
+
+    public void setFlipY(boolean flipY) {
+        mFlipY = flipY;
+    }
+
     public void mark() {
         if (mIsTaking) {
             return;
@@ -47,7 +59,9 @@ public final class PhotoTaker {
         if (!mIsToTake) {
             return;
         }
-        BitmapUtil.glReadBitmap(texId, texMatrix, mvpMatrix, texWidth, texHeight, mOnReadBitmapListener, false);
+        float[] mvpCopy = Arrays.copyOf(mvpMatrix, mvpMatrix.length);
+        android.opengl.Matrix.scaleM(mvpCopy, 0, mFlipX ? -1 : 1, mFlipY ? -1 : 1, 1);
+        BitmapUtil.glReadBitmap(texId, texMatrix, mvpCopy, texWidth, texHeight, mOnReadBitmapListener, false);
         mIsToTake = false;
         mIsTaking = false;
     }

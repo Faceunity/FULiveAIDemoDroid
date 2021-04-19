@@ -30,7 +30,8 @@ import java.io.File;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int IMAGE_REQUEST_CODE_PHOTO = 735;
-    private String mPhotoPath;
+    private static final int IMAGE_REQUEST_CODE_VIDEO = 736;
+    private String mPhotoPath, mVideoPath;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
         ViewTouchListener viewTouchListener = new ViewTouchListener();
         findViewById(R.id.cv_photo).setOnTouchListener(viewTouchListener);
         findViewById(R.id.cv_camera).setOnTouchListener(viewTouchListener);
+        findViewById(R.id.cv_video).setOnTouchListener(viewTouchListener);
     }
 
     private class ViewTouchListener implements View.OnTouchListener {
@@ -86,6 +88,18 @@ public class MainActivity extends AppCompatActivity {
                                 startActivityForResult(intentPhoto, IMAGE_REQUEST_CODE_PHOTO);
                             }
                             break;
+                            case R.id.cv_video:
+                                Intent intentVideo = new Intent();
+                                intentVideo.addCategory(Intent.CATEGORY_OPENABLE);
+                                intentVideo.setType("video/*");
+                                intentVideo.setAction(Intent.ACTION_OPEN_DOCUMENT);
+                                ResolveInfo resolveInfo = getPackageManager().resolveActivity(intentVideo, PackageManager.MATCH_DEFAULT_ONLY);
+                                if (resolveInfo == null) {
+                                    intentVideo.setAction(Intent.ACTION_GET_CONTENT);
+                                    intentVideo.removeCategory(Intent.CATEGORY_OPENABLE);
+                                }
+                                startActivityForResult(intentVideo, IMAGE_REQUEST_CODE_VIDEO);
+                                break;
                             default:
                         }
                     }
@@ -105,26 +119,39 @@ public class MainActivity extends AppCompatActivity {
             PhotoActivity.actionStart(this, mPhotoPath);
             mPhotoPath = null;
         }
+        if (!TextUtils.isEmpty(mVideoPath)) {
+            VideoActivity.start(this, mVideoPath);
+            mVideoPath = null;
+        }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         LogUtils.debug(TAG, "onActivityResult. intent: %s", data != null ? data.toUri(0) : "");
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode != RESULT_OK || requestCode != IMAGE_REQUEST_CODE_PHOTO || data == null) {
+        if (resultCode != RESULT_OK || data == null) {
             return;
         }
         Uri uri = data.getData();
-        String photoPath = UriUtil.getFileAbsolutePath(this, uri);
-        if (TextUtils.isEmpty(photoPath) || !new File(photoPath).exists()) {
-            ToastUtil.makeText(MainActivity.this, R.string.image_not_exist).show();
-            return;
+        if (requestCode == IMAGE_REQUEST_CODE_PHOTO) {
+            String photoPath = UriUtil.getFileAbsolutePath(this, uri);
+            if (TextUtils.isEmpty(photoPath) || !new File(photoPath).exists()) {
+                ToastUtil.makeText(MainActivity.this, R.string.image_not_exist).show();
+                return;
+            }
+            if (!checkIsImage(photoPath)) {
+                ToastUtil.makeText(this, R.string.wrong_image_format).show();
+                return;
+            }
+            mPhotoPath = photoPath;
+        } else if (requestCode == IMAGE_REQUEST_CODE_VIDEO) {
+            String videoPath = UriUtil.getFileAbsolutePath(this, uri);
+            if (TextUtils.isEmpty(videoPath) || !new File(videoPath).exists()) {
+                ToastUtil.makeText(MainActivity.this, R.string.image_not_exist).show();
+                return;
+            }
+            mVideoPath = videoPath;
         }
-        if (!checkIsImage(photoPath)) {
-            ToastUtil.makeText(this, R.string.wrong_image_format).show();
-            return;
-        }
-        mPhotoPath = photoPath;
     }
 
     private boolean checkIsImage(String path) {

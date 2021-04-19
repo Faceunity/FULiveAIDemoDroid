@@ -42,6 +42,7 @@ public class PhotoActivity extends BaseGlActivity implements OnPhotoRendererList
         findViewById(R.id.iv_debug).setVisibility(View.GONE);
         mIvSavePhoto = findViewById(R.id.iv_save_photo);
         mIvSavePhoto.setOnClickListener(mViewClickListener);
+        mPhotoTaker.setFlipX(true);
     }
 
     @Override

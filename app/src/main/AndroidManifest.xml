@@ -14,7 +14,7 @@
         android:required="true" />
 
     <application
-        android:name="com.faceunity.fuliveaidemo.FUApp"
+        android:name=".FUApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="${appName}"
@@ -22,6 +22,7 @@
         android:resizeableActivity="false"
         android:supportsRtl="false"
         android:theme="@style/AppTheme">
+        <activity android:name=".activity.VideoActivity"></activity>
 
         <meta-data
             android:name="design_width_in_dp"
@@ -31,20 +32,20 @@
             android:value="812" />
 
         <activity
-            android:name="com.faceunity.fuliveaidemo.activity.MainActivity"
+            android:name=".activity.MainActivity"
             android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         <activity
-            android:name="com.faceunity.fuliveaidemo.activity.CameraActivity"
+            android:name=".activity.CameraActivity"
             android:screenOrientation="portrait" />
         <activity
-            android:name="com.faceunity.fuliveaidemo.activity.PhotoActivity"
+            android:name=".activity.PhotoActivity"
             android:screenOrientation="portrait" />
-
     </application>
 
 </manifest>

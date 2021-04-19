@@ -66,7 +66,6 @@ public class ConfigFragment extends Fragment {
     private static final int HUMAN_TYPE_LANDMARKS = 1;
     private static final int HUMAN_TYPE_SKELETON = 2;
 
-    public static final String LANDMARKS_TYPE = "landmarks_type";
     public static final String CONTAIN_HUMAN_AVATAR = "contain_human_avatar";
 
     private BaseGlActivity mBaseGlActivity;
@@ -379,6 +378,7 @@ public class ConfigFragment extends Fragment {
                             SparseArray<Effect> selectedItems = adapter.getSelectedItems();
                             Effect tongueTrack = null;
                             Effect expression = null;
+                            Effect emotion = null;
                             for (int i = 0, size = selectedItems.size(); i < size; i++) {
                                 Effect effect = selectedItems.valueAt(i);
                                 String desc = effect.getDescription();
@@ -386,6 +386,8 @@ public class ConfigFragment extends Fragment {
                                     tongueTrack = effect;
                                 } else if (getResources().getString(R.string.config_item_face_expression).equals(desc)) {
                                     expression = effect;
+                                } else if (getResources().getString(R.string.config_item_face_emotion).equals(desc)) {
+                                    emotion = effect;
                                 }
                             }
                             if (tongueTrack != null) {
@@ -396,6 +398,10 @@ public class ConfigFragment extends Fragment {
                             if (expression != null) {
                                 adapter.clearItemSelected(expression);
                                 mBaseGlActivity.setExpressionRecyclerVisibility(false);
+                            }
+                            if (emotion != null) {
+                                adapter.clearItemSelected(emotion);
+                                mBaseGlActivity.setEmotionTrackRecyclerVisibility(false);
                             }
                             mBaseGlActivity.getFuRenderer().unselectEffect(mEffectMap.get(Effect.TYPE_FACE).get(2));
                         }
@@ -437,6 +443,25 @@ public class ConfigFragment extends Fragment {
                             }
                         }
                         mBaseGlActivity.setExpressionRecyclerVisibility(!isSelected);
+                    } else if (getResources().getString(R.string.config_item_face_emotion).equals(description)) {
+                        Effect landmarks75 = null;
+                        SparseArray<Effect> selectedItems = adapter.getSelectedItems();
+                        for (int i = 0; i < selectedItems.size(); i++) {
+                            Effect effect = selectedItems.valueAt(i);
+                            if (getResources().getString(R.string.config_item_face_landmarks_75).equals(effect.getDescription())) {
+                                landmarks75 = effect;
+                            }
+                        }
+                        if (isSelected) {
+                            mBaseGlActivity.getFuRenderer().selectEffect(landmarks75);
+                        } else {
+                            if (landmarks75 == null) {
+                                adapter.setItemSelected(0);
+                                landmarks75 = mEffectMap.get(Effect.TYPE_FACE).get(0);
+                                mBaseGlActivity.getFuRenderer().selectEffect(landmarks75);
+                            }
+                        }
+                        mBaseGlActivity.setEmotionTrackRecyclerVisibility(!isSelected);
                     }
                 }
                 clickEffect(item, !isSelected);
@@ -547,6 +572,7 @@ public class ConfigFragment extends Fragment {
                         mBaseGlActivity.getFuRenderer().unselectEffect(mFullEffect);
                         mBaseGlActivity.getFuRenderer().unselectEffect(mHalfEffect);
                     } else if (mHumanType == HUMAN_TYPE_SKELETON) {
+                        mBaseGlActivity.getFuRenderer().resetInputCameraMatrix();
                         mBaseGlActivity.setRenderMode(FURenderer.RENDER_MODE_NORMAL);
                     }
                     resetViewLandmarks();
@@ -657,6 +683,7 @@ public class ConfigFragment extends Fragment {
                     mBaseGlActivity.setRecognitionRecyclerVisibility(BaseGlActivity.RECOGNITION_TYPE_ACTION, false);
                     mBaseGlActivity.setExpressionRecyclerVisibility(false);
                     mBaseGlActivity.setTongueTrackRecyclerVisibility(false);
+                    mBaseGlActivity.setEmotionTrackRecyclerVisibility(false);
                 }
                 break;
                 case R.id.tv_config_human_full: {
@@ -779,6 +806,9 @@ public class ConfigFragment extends Fragment {
         faceEffects.add(mBaseGlActivity.getFaceLandmarksEffect());
         faceEffects.add(new Effect(FACE_TONGUE_BUNDLE_PATH, resources.getString(R.string.config_item_face_tongue), Effect.TYPE_FACE, Effect.MODULE_CODE_FACE_TONGUE));
         faceEffects.add(mBaseGlActivity.getAiTypeEffect());
+        Map<String, Object> paramMap = new HashMap<>(4);
+        paramMap.put(FURenderer.KEY_AI_TYPE, FURenderer.FACEPROCESSOR_EMOTION_RECOGNIZER);
+        faceEffects.add(new Effect(FACE_EXPRESSION_BUNDLE_PATH, resources.getString(R.string.config_item_face_emotion), Effect.TYPE_FACE, Effect.MODULE_CODE_FACE_EMOTION, paramMap));
         effectMap.put(Effect.TYPE_FACE, Collections.unmodifiableList(faceEffects));
 
         List<Effect> humanEffects = new ArrayList<>();

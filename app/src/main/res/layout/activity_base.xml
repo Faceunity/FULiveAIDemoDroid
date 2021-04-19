@@ -152,6 +152,20 @@
             app:layout_constraintTop_toBottomOf="@id/tv_debug_info"
             app:layout_goneMarginTop="8dp" />
 
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_emotion_track"
+            android:layout_width="108dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/shape_bg_float_text"
+            android:paddingTop="8dp"
+            android:scrollbars="none"
+            android:visibility="gone"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/rv_tongue_track"
+            app:layout_goneMarginTop="8dp" />
+
         <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/tv_track_status"
             android:layout_width="wrap_content"

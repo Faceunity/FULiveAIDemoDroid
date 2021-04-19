@@ -14,6 +14,8 @@ public class Effect {
     public static final String MODULE_CODE_FACE_LANDMARKS = "0-4096";
     public static final String MODULE_CODE_FACE_TONGUE = "0-8192";
     public static final String MODULE_CODE_FACE_EXPRESSION = "2048-0";
+    // TODO: 2021/2/5 0005 authcode
+    public static final String MODULE_CODE_FACE_EMOTION = "2048-0";
     public static final String MODULE_CODE_HUMAN_LANDMARKS = "0-16384";
     public static final String MODULE_CODE_HUMAN_SKELETON = "0-128";
     public static final String MODULE_CODE_HAND_GESTURE = "512-0";

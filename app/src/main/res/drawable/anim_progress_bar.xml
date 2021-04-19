@@ -8,10 +8,8 @@
     android:repeatMode="restart"
     android:repeatCount="infinite">
     <shape
-        android:shape="ring"
-        android:useLevel="false"
-        android:thicknessRatio="15"
-        android:innerRadiusRatio="2.5">
+        android:shape="ring" android:useLevel="false"
+        android:thicknessRatio="15" android:innerRadiusRatio="2.5">
         <gradient
             android:type="sweep"
             android:useLevel="false"
