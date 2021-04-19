@@ -2,6 +2,7 @@ package com.faceunity.nama;
 
 import android.content.Context;
 import android.hardware.Camera;
+import android.opengl.GLES30;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -84,6 +85,12 @@ public final class FURenderer {
     public static final int HUMAN_TRACK_SCENE_FULL = 1;
     public static final int HUMAN_TRACK_SCENE_HALF = 0;
 
+    public static final int FACEPROCESSOR_EXPRESSION_RECOGNIZER = faceunity.FUAITYPE_FACEPROCESSOR_EXPRESSION_RECOGNIZER;
+    public static final int FACEPROCESSOR_EMOTION_RECOGNIZER = faceunity.FUAITYPE_FACEPROCESSOR_EMOTION_RECOGNIZER;
+
+    public static final String KEY_AI_TYPE = "aitype";
+    public static final String KEY_LANDMARKS_TYPE = "landmarks_type";
+
     /* 人体骨骼动作识别道具 */
     private static final String[] GESTURE_BIND_BUNDLES = {"anim_idle.bundle", "anim_eight.bundle", "anim_fist.bundle", "anim_greet.bundle"
             , "anim_gun.bundle", "anim_heart.bundle", "anim_hold.bundle", "anim_korheart.bundle", "anim_merge.bundle",
@@ -135,6 +142,7 @@ public final class FURenderer {
     private static boolean sIsInited;
     /* 舌头、表情检测，欧拉角结果 */
     private final int[] mTongueDirection = new int[1];
+    private final int[] mEmotion = new int[1];
     private final int[] mExpressionType = new int[1];
     private final float[] mRotationEuler = new float[3];
 
@@ -267,7 +275,7 @@ public final class FURenderer {
     /**
      * 表情识别类型
      */
-    public static final class FaceExpressionType {
+    public static final class FuAiFaceExpressionType {
         public static final int FACE_EXPRESSION_UNKONW = 0;
         /**
          * 抬眉毛
@@ -337,6 +345,45 @@ public final class FURenderer {
          * 点头
          */
         public static final int FACE_EXPRESSION_HEAD_NOD = 1 << 17;
+    }
+
+    /**
+     * 情绪识别类型
+     */
+    public static final class FuAiEmotionType {
+        public static final int FUAIEMOTION_UNKNOWN = 0;
+        /**
+         * 开心
+         */
+        public static final int FUAIEMOTION_HAPPY = 1 << 1;
+        /**
+         * 悲伤
+         */
+        public static final int FUAIEMOTION_SAD = 1 << 2;
+        /**
+         * 生气
+         */
+        public static final int FUAIEMOTION_ANGRY = 1 << 3;
+        /**
+         * 惊讶
+         */
+        public static final int FUAIEMOTION_SURPRISE = 1 << 4;
+        /**
+         * 恐惧
+         */
+        public static final int FUAIEMOTION_FEAR = 1 << 5;
+        /**
+         * 厌恶
+         */
+        public static final int FUAIEMOTION_DISGUST = 1 << 6;
+        /**
+         * 平静
+         */
+        public static final int FUAIEMOTION_NEUTRAL = 1 << 7;
+        /**
+         * 困惑
+         */
+        public static final int FUAIEMOTION_CONFUSE = 1 << 8;
     }
 
     private FURenderer(Context context) {
@@ -449,6 +496,11 @@ public final class FURenderer {
         });
     }
 
+    public void resetInputCameraMatrix() {
+        faceunity.fuSetInputCameraBufferMatrixState(0);
+        faceunity.fuSetInputCameraTextureMatrixState(0);
+    }
+
     private int[] validateItems(int[] input) {
         int[] output = new int[input.length];
         int count = 0;
@@ -483,10 +535,15 @@ public final class FURenderer {
         }
         int fuTex;
         boolean renderNormal = mRenderMode == RENDER_MODE_NORMAL;
+
         if (renderNormal) {
+            //fuTex = faceunity.fuRenderImg(w, h, mFrameId++, mItemsArray, 0, img, faceunity.FU_FORMAT_NV21_BUFFER, 1, 1, new byte[]{0});
+            faceunity.fuSetInputCameraTextureMatrixState(0);
+            faceunity.fuSetInputCameraBufferMatrixState(0);
             int flags = createFlags();
             flags ^= mInputTextureType;
             fuTex = faceunity.fuRenderToNV21Image(img, w, h, mFrameId++, mItemsArray, flags);
+            GLES30.glFinish();
         } else {
             rotateImage(img, w, h);
             fuTex = faceunity.fuRenderBundlesWithCamera(mRotatedImage.mData, tex, faceunity.FU_ADM_FLAG_EXTERNAL_OES_TEXTURE,
@@ -581,6 +638,39 @@ public final class FURenderer {
     }
 
     /**
+     * 检测情绪
+     *
+     * @param result[0] 是否有其他情绪，result[1] 是否有困惑情绪
+     */
+    public void detectFaceEmotion(int[] result) {
+        Arrays.fill(result, 0);
+        if (faceunity.fuIsTracking() > 0) {
+            int[] emotion = mEmotion;
+            faceunity.fuGetFaceInfo(0, "emotion", emotion);
+            int em = emotion[0];
+            if ((em & FuAiEmotionType.FUAIEMOTION_HAPPY) != 0) {
+                result[0] = FuAiEmotionType.FUAIEMOTION_HAPPY;
+            } else if ((em & FuAiEmotionType.FUAIEMOTION_SAD) != 0) {
+                result[0] = FuAiEmotionType.FUAIEMOTION_SAD;
+            } else if ((em & FuAiEmotionType.FUAIEMOTION_ANGRY) != 0) {
+                result[0] = FuAiEmotionType.FUAIEMOTION_ANGRY;
+            } else if ((em & FuAiEmotionType.FUAIEMOTION_SURPRISE) != 0) {
+                result[0] = FuAiEmotionType.FUAIEMOTION_SURPRISE;
+            } else if ((em & FuAiEmotionType.FUAIEMOTION_FEAR) != 0) {
+                result[0] = FuAiEmotionType.FUAIEMOTION_FEAR;
+            } else if ((em & FuAiEmotionType.FUAIEMOTION_DISGUST) != 0) {
+                result[0] = FuAiEmotionType.FUAIEMOTION_DISGUST;
+            } else if ((em & FuAiEmotionType.FUAIEMOTION_NEUTRAL) != 0) {
+                result[0] = FuAiEmotionType.FUAIEMOTION_NEUTRAL;
+            }
+            if ((em & FuAiEmotionType.FUAIEMOTION_CONFUSE) != 0) {
+                result[1] = 1;
+            }
+//            LogUtils.debug(TAG, "emotion %s, result %s ", Arrays.toString(emotion), Arrays.toString(result));
+        }
+    }
+
+    /**
      * 表情识别
      *
      * @param result
@@ -597,59 +687,59 @@ public final class FURenderer {
             int et = expressionType[0];
             if (et > 0) {
                 int index = 0;
-                if ((et & FaceExpressionType.FACE_EXPRESSION_BROW_UP) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_BROW_UP;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_BROW_UP) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_BROW_UP;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_BROW_FROWN) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_BROW_FROWN;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_BROW_FROWN) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_BROW_FROWN;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_LEFT_EYE_CLOSE) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_LEFT_EYE_CLOSE;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_LEFT_EYE_CLOSE) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_LEFT_EYE_CLOSE;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_RIGHT_EYE_CLOSE) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_RIGHT_EYE_CLOSE;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_RIGHT_EYE_CLOSE) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_RIGHT_EYE_CLOSE;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_EYE_WIDE) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_EYE_WIDE;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_EYE_WIDE) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_EYE_WIDE;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_LEFT) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_LEFT;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_LEFT) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_LEFT;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_FUNNEL) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_FUNNEL;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_FUNNEL) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_FUNNEL;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_OPEN) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_OPEN;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_OPEN) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_OPEN;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_PUCKER) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_PUCKER;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_PUCKER) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_PUCKER;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_ROLL) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_ROLL;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_ROLL) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_ROLL;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_PUFF) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_PUFF;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_PUFF) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_PUFF;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_MOUTH_FROWN) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_MOUTH_FROWN;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_FROWN) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_FROWN;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_HEAD_LEFT) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_HEAD_LEFT;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_HEAD_LEFT) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_HEAD_LEFT;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_HEAD_RIGHT) != 0) {
-                    result[index++] = FaceExpressionType.FACE_EXPRESSION_HEAD_RIGHT;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_HEAD_RIGHT) != 0) {
+                    result[index++] = FuAiFaceExpressionType.FACE_EXPRESSION_HEAD_RIGHT;
                 }
-                if ((et & FaceExpressionType.FACE_EXPRESSION_HEAD_NOD) != 0) {
-                    result[index] = FaceExpressionType.FACE_EXPRESSION_HEAD_NOD;
+                if ((et & FuAiFaceExpressionType.FACE_EXPRESSION_HEAD_NOD) != 0) {
+                    result[index] = FuAiFaceExpressionType.FACE_EXPRESSION_HEAD_NOD;
                 }
             }
         }

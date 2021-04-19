@@ -63,7 +63,9 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     protected ViewClickListener mViewClickListener;
     protected FURenderer mFURenderer;
     private RecyclerView mRvTongueTrack;
+    private RecyclerView mRvEmotionTrack;
     private TongueTrackAdapter mTongueTrackAdapter;
+    private TongueTrackAdapter mEmotionTrackAdapter;
     private RecyclerView mRvExpression;
     private ExpressionAdapter mExpressionAdapter;
     private RecyclerView mRvRecognition;
@@ -74,9 +76,14 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     private int mRecognitionCount;
     private int mDetectTongueIndex = -1;
     private int mDetectTongueCount;
+    private int mDetectEmotionIndex = -1;
+    private boolean mDetectEmotionConfuse;
+    private int mDetectEmotionCount;
     private int mRecognitionType = RECOGNITION_TYPE_NONE;
     private boolean mIsDetectTongue;
+    private boolean mIsDetectEmotion;
     private boolean mIsDetectExpression;
+    private int[] mDetectEmotionResult;
     private int[] mDetectExpressionTypes;
     private int[] mDetectExpressionIndexes;
     protected boolean mIsFlipX;
@@ -117,12 +124,24 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     private final Runnable mUpdateTongueRecyclerTask = new Runnable() {
         @Override
         public void run() {
-            int detectTongueIndex = mDetectTongueIndex;
-            if (detectTongueIndex >= 0) {
-                mTongueTrackAdapter.setItemSelected(detectTongueIndex);
+            int index = mDetectTongueIndex;
+            if (index >= 0) {
+                mTongueTrackAdapter.setItemSelected(index);
             } else {
                 mTongueTrackAdapter.clearSingleItemSelected();
             }
+        }
+    };
+    private final Runnable mUpdateEmotionRecyclerTask = new Runnable() {
+        @Override
+        public void run() {
+            int index = mDetectEmotionIndex;
+            if (index >= 0) {
+                mEmotionTrackAdapter.setItemSelected(index);
+            } else {
+                mEmotionTrackAdapter.clearSingleItemSelected();
+            }
+            mEmotionTrackAdapter.updateLastItem(mDetectEmotionConfuse);
         }
     };
 
@@ -142,6 +161,7 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         mRvRecognition.setTag(false);
         mRvExpression = findViewById(R.id.rv_expression);
         mRvTongueTrack = findViewById(R.id.rv_tongue_track);
+        mRvEmotionTrack = findViewById(R.id.rv_emotion_track);
 
         mPhotoTaker = new PhotoTaker();
         mPhotoTaker.setOnPictureTakeListener(this);
@@ -152,10 +172,10 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         initFuRenderer();
 
         Map<String, Object> paramMap = new HashMap<>(4);
-        paramMap.put(ConfigFragment.LANDMARKS_TYPE, FURenderer.FACE_LANDMARKS_239);
+        paramMap.put(FURenderer.KEY_LANDMARKS_TYPE, FURenderer.FACE_LANDMARKS_239);
         mFaceLandmarksEffect = new Effect(ConfigFragment.FACE_LANDMARKS_BUNDLE_PATH, getString(R.string.config_item_face_landmarks_75), Effect.TYPE_FACE, Effect.MODULE_CODE_FACE_LANDMARKS, paramMap);
         paramMap = new HashMap<>(4);
-        paramMap.put("aitype", 1 << 15); // FACEPROCESSOR_EXPRESSION_RECOGNIZER
+        paramMap.put(FURenderer.KEY_AI_TYPE, FURenderer.FACEPROCESSOR_EXPRESSION_RECOGNIZER);
         mAiTypeEffect = new Effect(ConfigFragment.FACE_EXPRESSION_BUNDLE_PATH, getString(R.string.config_item_face_expression), Effect.TYPE_FACE, Effect.MODULE_CODE_FACE_EXPRESSION, paramMap);
     }
 
@@ -311,6 +331,23 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
             }
             mLifecycleHandler.post(mUpdateExpressionRecyclerTask);
         }
+
+        if (mIsDetectEmotion) {
+            int[] detectEmotionResult = mDetectEmotionResult;
+            mFURenderer.detectFaceEmotion(detectEmotionResult);
+            int index = convertToEmotionIndex(detectEmotionResult[0]);
+//            Log.v(TAG, "trackFace: emotion " + emotion + ", index " + index);
+            if (mDetectEmotionIndex == index) {
+                mDetectEmotionCount++;
+            } else {
+                mDetectEmotionCount = 0;
+            }
+            mDetectEmotionIndex = index;
+            mDetectEmotionConfuse = detectEmotionResult[1] != 0;
+            if (mDetectEmotionCount >= FACE_DETECT_OK_THRESHOLD) {
+                mLifecycleHandler.post(mUpdateEmotionRecyclerTask);
+            }
+        }
     }
 
     private static int convertToTongueIndex(int type, boolean isFlipX) {
@@ -344,57 +381,88 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         }
     }
 
-    private static int convertToExpressionIndex(int type, boolean isFlipX) {
+    private static int convertToEmotionIndex(int type) {
         switch (type) {
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_BROW_UP: {
+            case FURenderer.FuAiEmotionType.FUAIEMOTION_NEUTRAL: {
                 return 0;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_BROW_FROWN: {
+            case FURenderer.FuAiEmotionType.FUAIEMOTION_SURPRISE: {
                 return 1;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_RIGHT_EYE_CLOSE: {
-                return isFlipX ? 2 : 3;
+            case FURenderer.FuAiEmotionType.FUAIEMOTION_HAPPY: {
+                return 2;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_LEFT_EYE_CLOSE: {
-                return isFlipX ? 3 : 2;
+            case FURenderer.FuAiEmotionType.FUAIEMOTION_DISGUST: {
+                return 3;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_EYE_WIDE: {
+            case FURenderer.FuAiEmotionType.FUAIEMOTION_ANGRY: {
                 return 4;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT: {
-                return isFlipX ? 5 : 6;
+            case FURenderer.FuAiEmotionType.FUAIEMOTION_FEAR: {
+                return 5;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_LEFT: {
-                return isFlipX ? 6 : 5;
+            case FURenderer.FuAiEmotionType.FUAIEMOTION_SAD: {
+                return 6;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE: {
+            case FURenderer.FuAiEmotionType.FUAIEMOTION_CONFUSE: {
                 return 7;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_FUNNEL: {
+            default:
+                return -1;
+        }
+    }
+
+    private static int convertToExpressionIndex(int type, boolean isFlipX) {
+        switch (type) {
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_BROW_UP: {
+                return 0;
+            }
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_BROW_FROWN: {
+                return 1;
+            }
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_RIGHT_EYE_CLOSE: {
+                return isFlipX ? 2 : 3;
+            }
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_LEFT_EYE_CLOSE: {
+                return isFlipX ? 3 : 2;
+            }
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_EYE_WIDE: {
+                return 4;
+            }
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_RIGHT: {
+                return isFlipX ? 5 : 6;
+            }
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE_LEFT: {
+                return isFlipX ? 6 : 5;
+            }
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_SMILE: {
+                return 7;
+            }
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_FUNNEL: {
                 return 8;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_OPEN: {
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_OPEN: {
                 return 9;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_PUCKER: {
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_PUCKER: {
                 return 10;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_ROLL: {
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_ROLL: {
                 return 11;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_PUFF: {
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_PUFF: {
                 return 12;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_MOUTH_FROWN: {
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_MOUTH_FROWN: {
                 return 13;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_HEAD_RIGHT: {
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_HEAD_RIGHT: {
                 return isFlipX ? 14 : 15;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_HEAD_LEFT: {
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_HEAD_LEFT: {
                 return isFlipX ? 15 : 14;
             }
-            case FURenderer.FaceExpressionType.FACE_EXPRESSION_HEAD_NOD: {
+            case FURenderer.FuAiFaceExpressionType.FACE_EXPRESSION_HEAD_NOD: {
                 return 16;
             }
             default:
@@ -476,18 +544,38 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     }
 
     public void setTongueTrackRecyclerVisibility(boolean visible) {
-        mRvTongueTrack.setVisibility(visible ? View.VISIBLE : View.GONE);
+        RecyclerView rvTongueTrack = mRvTongueTrack;
+        rvTongueTrack.setVisibility(visible ? View.VISIBLE : View.GONE);
         if (mTongueTrackAdapter == null) {
             List<Integer> list = initTongueList();
-            mTongueTrackAdapter = new TongueTrackAdapter(new ArrayList<>(list));
-            mTongueTrackAdapter.setCanManualClick(false);
-            ((SimpleItemAnimator) mRvTongueTrack.getItemAnimator()).setSupportsChangeAnimations(false);
-            mRvTongueTrack.setHasFixedSize(true);
+            TongueTrackAdapter tongueTrackAdapter = new TongueTrackAdapter(new ArrayList<>(list));
+            tongueTrackAdapter.setCanManualClick(false);
+            ((SimpleItemAnimator) rvTongueTrack.getItemAnimator()).setSupportsChangeAnimations(false);
+            rvTongueTrack.setHasFixedSize(true);
             RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
-            mRvTongueTrack.setLayoutManager(layoutManager);
-            mRvTongueTrack.setAdapter(mTongueTrackAdapter);
+            rvTongueTrack.setLayoutManager(layoutManager);
+            rvTongueTrack.setAdapter(tongueTrackAdapter);
+            mTongueTrackAdapter = tongueTrackAdapter;
         }
         mIsDetectTongue = visible;
+    }
+
+    public void setEmotionTrackRecyclerVisibility(boolean visible) {
+        RecyclerView rvEmotionTrack = mRvEmotionTrack;
+        rvEmotionTrack.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (mEmotionTrackAdapter == null) {
+            List<Integer> list = initEmotionList();
+            TongueTrackAdapter emotionTrackAdapter = new TongueTrackAdapter(new ArrayList<>(list));
+            emotionTrackAdapter.setCanManualClick(false);
+            ((SimpleItemAnimator) rvEmotionTrack.getItemAnimator()).setSupportsChangeAnimations(false);
+            rvEmotionTrack.setHasFixedSize(true);
+            RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+            rvEmotionTrack.setLayoutManager(layoutManager);
+            rvEmotionTrack.setAdapter(emotionTrackAdapter);
+            mEmotionTrackAdapter = emotionTrackAdapter;
+            mDetectEmotionResult = new int[2];
+        }
+        mIsDetectEmotion = visible;
     }
 
     public void setExpressionRecyclerVisibility(boolean visible) {
@@ -636,7 +724,7 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         return mAiTypeEffect;
     }
 
-    private List<RecognitionListData> initGestureList() {
+    private static List<RecognitionListData> initGestureList() {
         List<RecognitionListData> gestureResourceList = new ArrayList<>(16);
         gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_love));
         gestureResourceList.add(new RecognitionListData(R.drawable.demo_gesture_icon_one_handed));
@@ -657,7 +745,7 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         return Collections.unmodifiableList(gestureResourceList);
     }
 
-    private List<RecognitionListData> initActionList() {
+    private static List<RecognitionListData> initActionList() {
         List<RecognitionListData> actionResourceList = new ArrayList<>(16);
         actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_0));
         actionResourceList.add(new RecognitionListData(R.drawable.demo_action_icon_1));
@@ -678,7 +766,7 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         return Collections.unmodifiableList(actionResourceList);
     }
 
-    private List<Integer> initExpressionList() {
+    private static List<Integer> initExpressionList() {
         List<Integer> expressionList = new ArrayList<>(18);
         expressionList.add(R.drawable.demo_expression_icon_raise_eyebrows);
         expressionList.add(R.drawable.demo_expression_icon_frown);
@@ -700,7 +788,7 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         return Collections.unmodifiableList(expressionList);
     }
 
-    private List<Integer> initTongueList() {
+    private static List<Integer> initTongueList() {
         List<Integer> tongueList = new ArrayList<>(8);
         tongueList.add(R.string.tongue_track_up);
         tongueList.add(R.string.tongue_track_down);
@@ -713,7 +801,21 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         return Collections.unmodifiableList(tongueList);
     }
 
+    private static List<Integer> initEmotionList() {
+        List<Integer> tongueList = new ArrayList<>(8);
+        tongueList.add(R.string.emotion_track_neutral);
+        tongueList.add(R.string.emotion_track_surprise);
+        tongueList.add(R.string.emotion_track_happy);
+        tongueList.add(R.string.emotion_track_disgust);
+        tongueList.add(R.string.emotion_track_angry);
+        tongueList.add(R.string.emotion_track_fear);
+        tongueList.add(R.string.emotion_track_sad);
+        tongueList.add(R.string.emotion_track_confuse);
+        return Collections.unmodifiableList(tongueList);
+    }
+
     private static class TongueTrackAdapter extends BaseRecyclerAdapter<Integer> {
+        private boolean mConfuse;
 
         TongueTrackAdapter(@NonNull List<Integer> data) {
             super(data, R.layout.rv_tongue_track);
@@ -722,6 +824,17 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         @Override
         protected void bindViewHolder(BaseViewHolder viewHolder, Integer item) {
             viewHolder.setText(R.id.tv_item_tongue_track, item);
+            if (item == R.string.emotion_track_confuse) {
+                viewHolder.setVisibility(R.id.tv_item_tongue_track_status, View.VISIBLE)
+                        .setText(R.id.tv_item_tongue_track_status, mConfuse ? R.string.emotion_track_yes : R.string.emotion_track_no)
+                        .setBackground(R.id.fl_tongue_track, R.drawable.shape_bg_float_text_b);
+            }
+        }
+
+        public void updateLastItem(boolean confuse) {
+            mConfuse = confuse;
+            int index = getItemCount() - 1;
+            notifyItemChanged(index);
         }
     }
 

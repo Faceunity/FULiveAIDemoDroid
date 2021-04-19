@@ -3,6 +3,7 @@
     <string name="main_page_title">FU Live Demo 算法版</string>
     <string name="main_page_camera">实时拍摄</string>
     <string name="main_page_photo">图片处理</string>
+    <string name="main_page_video">视频处理</string>
     <string name="save_photo_success">保存图片成功！</string>
     <string name="save_photo_failure">保存图片失败！</string>
     <string name="save_video_success">保存视频成功！</string>
@@ -19,6 +20,7 @@
     <string name="config_item_face_landmarks_75">人脸特征点</string>
     <string name="config_item_face_tongue">舌头检测</string>
     <string name="config_item_face_expression">表情识别</string>
+    <string name="config_item_face_emotion">情绪识别</string>
     <string name="config_item_human_landmark">人体关键点</string>
     <string name="config_item_human_skeleton">人体骨骼</string>
     <string name="config_item_human_full">全身</string>
@@ -49,5 +51,15 @@
     <string name="tongue_track_right_down">舌头右下</string>
     <string name="toast_invalid_auth">缺少证书，功能无效</string>
     <string name="text_expression_list_tip">上滑列表滚动</string>
+    <string name="emotion_track_neutral">平静</string>
+    <string name="emotion_track_surprise">惊讶</string>
+    <string name="emotion_track_happy">开心</string>
+    <string name="emotion_track_disgust">厌恶</string>
+    <string name="emotion_track_angry">愤怒</string>
+    <string name="emotion_track_fear">恐惧</string>
+    <string name="emotion_track_sad">悲伤</string>
+    <string name="emotion_track_confuse">困惑</string>
+    <string name="emotion_track_yes">是</string>
+    <string name="emotion_track_no">否</string>
 
 </resources>

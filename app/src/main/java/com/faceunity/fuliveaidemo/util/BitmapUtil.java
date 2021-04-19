@@ -12,6 +12,7 @@ import android.util.Log;
 import com.faceunity.fuliveaidemo.gles.ProgramTexture2d;
 import com.faceunity.fuliveaidemo.gles.ProgramTextureOES;
 import com.faceunity.fuliveaidemo.gles.core.GlUtil;
+import com.faceunity.fuliveaidemo.gles.core.Program;
 import com.faceunity.nama.utils.ThreadHelper;
 
 import java.io.IOException;
@@ -39,6 +40,8 @@ public final class BitmapUtil {
      * @param isOes     是否是OES纹理
      */
     public static void glReadBitmap(int texId, float[] texMatrix, float[] mvpMatrix, final int texWidth, final int texHeight, final OnReadBitmapListener listener, boolean isOes) {
+        int[] originFbo = new int[1];
+        GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING, originFbo, 0);
         int[] textures = new int[1];
         GLES20.glGenTextures(1, textures, 0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0]);
@@ -51,13 +54,15 @@ public final class BitmapUtil {
         int[] viewport = new int[4];
         GLES20.glGetIntegerv(GLES20.GL_VIEWPORT, viewport, 0);
         GLES20.glViewport(0, 0, texWidth, texHeight);
-        GLES20.glClearColor(0, 0, 0, 0);
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+        Program program;
         if (isOes) {
-            new ProgramTextureOES().drawFrame(texId, texMatrix, mvpMatrix);
+            program = new ProgramTextureOES();
         } else {
-            new ProgramTexture2d().drawFrame(texId, texMatrix, mvpMatrix);
+            program = new ProgramTexture2d();
         }
+        program.drawFrame(texId, texMatrix, mvpMatrix);
+        program.release();
 
         final ByteBuffer buffer = ByteBuffer.allocateDirect(texWidth * texHeight * 4);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
@@ -66,10 +71,11 @@ public final class BitmapUtil {
         GlUtil.checkGlError("glReadPixels");
         buffer.rewind();
         GLES20.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, GLES20.GL_NONE);
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, originFbo[0]);
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
-        GLES20.glDeleteTextures(1, textures, 0);
-        GLES20.glDeleteFramebuffers(1, frameBuffers, 0);
+        GLES20.glDeleteTextures(textures.length, textures, 0);
+        GLES20.glDeleteFramebuffers(frameBuffers.length, frameBuffers, 0);
 
         // ref: https://www.programcreek.com/java-api-examples/?class=android.opengl.GLES20&method=glReadPixels
         ThreadHelper.getInstance().execute(new Runnable() {
@@ -77,12 +83,8 @@ public final class BitmapUtil {
             public void run() {
                 Bitmap bmp = Bitmap.createBitmap(texWidth, texHeight, Bitmap.Config.ARGB_8888);
                 bmp.copyPixelsFromBuffer(buffer);
-                Matrix matrix = new Matrix();
-                matrix.preScale(1f, -1f);
-                Bitmap finalBmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, false);
-                bmp.recycle();
                 if (listener != null) {
-                    listener.onReadBitmapListener(finalBmp);
+                    listener.onReadBitmapListener(bmp);
                 }
             }
         });

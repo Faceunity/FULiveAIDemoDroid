@@ -59,6 +59,7 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
         mTvDebugInfo.setTag(false);
         findViewById(R.id.iv_debug).setOnClickListener(mViewClickListener);
         findViewById(R.id.iv_switch_cam).setOnClickListener(mViewClickListener);
+        mPhotoTaker.setFlipY(true);
     }
 
     @Override
