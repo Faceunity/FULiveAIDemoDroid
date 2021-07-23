@@ -4,35 +4,47 @@ import android.app.Activity;
 import android.content.Intent;
 import android.view.View;
 
+import com.faceunity.core.entity.FURenderFrameData;
+import com.faceunity.core.entity.FURenderInputData;
+import com.faceunity.core.entity.FURenderOutputData;
+import com.faceunity.core.faceunity.FURenderKit;
+import com.faceunity.core.listener.OnGlRendererListener;
+import com.faceunity.core.renderer.PhotoRenderer;
 import com.faceunity.fuliveaidemo.R;
-import com.faceunity.fuliveaidemo.renderer.OnPhotoRendererListener;
-import com.faceunity.fuliveaidemo.renderer.PhotoRenderer;
-import com.faceunity.fuliveaidemo.util.ToastUtil;
 import com.faceunity.nama.FURenderer;
 import com.faceunity.nama.utils.LogUtils;
 
 /**
  * @author Richie on 2020.05.21
  */
-public class PhotoActivity extends BaseGlActivity implements OnPhotoRendererListener {
+public class PhotoActivity extends BaseGlActivity implements OnGlRendererListener {
     private static final String TAG = "PhotoActivity";
     public static final String PHOTO_PATH = "photo_path";
     private View mIvSavePhoto;
+    private PhotoRenderer photoRenderer;
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        photoRenderer.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        photoRenderer.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        photoRenderer.onDestroy();
+    }
 
     public static void actionStart(Activity context, String photoPath) {
         Intent intent = new Intent(context, PhotoActivity.class);
         intent.putExtra(PHOTO_PATH, photoPath);
         context.startActivity(intent);
-    }
-
-    @Override
-    public int onDrawFrame(byte[] photoRgbaByte, int photoTextureId, int photoWidth, int photoHeight) {
-        int fuTexId = mFURenderer.onDrawFrameSingleInput(photoTextureId, photoWidth, photoHeight);
-        trackFace();
-        trackHuman();
-        queryTrackStatus();
-        mPhotoTaker.send(fuTexId, PhotoRenderer.MATRIX_ROTATE_90, PhotoRenderer.IMAGE_TEXTURE_MATRIX, photoWidth, photoHeight);
-        return fuTexId;
     }
 
     @Override
@@ -42,29 +54,25 @@ public class PhotoActivity extends BaseGlActivity implements OnPhotoRendererList
         findViewById(R.id.iv_debug).setVisibility(View.GONE);
         mIvSavePhoto = findViewById(R.id.iv_save_photo);
         mIvSavePhoto.setOnClickListener(mViewClickListener);
-        mPhotoTaker.setFlipX(true);
     }
 
     @Override
     protected void initFuRenderer() {
-        mFURenderer = new FURenderer.Builder(this)
-                .setInputTextureType(FURenderer.INPUT_TEXTURE_2D)
-                .setOnSystemErrorListener(this)
-                .build();
+        mFURenderer = FURenderer.getInstance();
     }
 
     @Override
     protected void initGlRenderer() {
         String photoPath = getIntent().getStringExtra(PHOTO_PATH);
         LogUtils.debug(TAG, "photoPath: %s", photoPath);
-        new PhotoRenderer(getLifecycle(), photoPath, mGlSurfaceView, this);
+        photoRenderer = new PhotoRenderer(mGlSurfaceView, photoPath, this);
     }
 
     @Override
     protected void onViewClicked(int id) {
         super.onViewClicked(id);
         if (id == R.id.iv_save_photo) {
-            mPhotoTaker.mark();
+            isTakePhoto = true;
         }
     }
 
@@ -79,13 +87,35 @@ public class PhotoActivity extends BaseGlActivity implements OnPhotoRendererList
     }
 
     @Override
-    public void onLoadPhotoError(final String error) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                ToastUtil.makeText(PhotoActivity.this, error).show();
-            }
-        });
+    public void onDrawFrameAfter() {
+
     }
 
+    @Override
+    public void onRenderAfter(FURenderOutputData fuRenderOutputData, FURenderFrameData fuRenderFrameData) {
+        trackFace();
+        trackHuman();
+        queryTrackStatus();
+        recordingPhoto(fuRenderOutputData, fuRenderFrameData.getTexMatrix());
+    }
+
+    @Override
+    public void onRenderBefore(FURenderInputData fuRenderInputData) {
+
+    }
+
+    @Override
+    public void onSurfaceChanged(int i, int i1) {
+
+    }
+
+    @Override
+    public void onSurfaceCreated() {
+
+    }
+
+    @Override
+    public void onSurfaceDestroy() {
+        FURenderKit.getInstance().release();
+    }
 }

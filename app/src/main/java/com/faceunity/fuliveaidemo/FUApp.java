@@ -12,7 +12,7 @@ public class FUApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        FURenderer.setup(this);
+        FURenderer.getInstance().setup(this);
     }
 
 }

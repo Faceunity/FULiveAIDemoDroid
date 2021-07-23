@@ -1,24 +1,29 @@
 # Android Nama Java API 参考文档
 
 级别：Public
-更新日期：2021-01-25
-SDK版本: 7.3.2
+更新日期：2021-07-13
+SDK版本: 7.4.1
 
 ------
 ### 最新更新内容：
 
+**2021-07-13 v7.4.1:**
+- 更新精品贴纸8款，包含2款PK游戏，5款装饰及互动贴纸，1款全身驱动道具
+- 更新2款中国风Animoji模型
+- 修复人像分割贴纸效果问题，修复后人像分割结果和贴纸效果会同时出现
+- 修复一些bug，包括高分辨率磨皮效果问题，人脸检测与贴纸绘制的时序问题
+
 **2021-04-19 v7.4.0:**
 
-- 【Demo层】重构特效Demo，将面向过程变成改为面向对象，整体结构逻辑更清晰，客户调用更便捷。同时具有节省内存、优化itemID自动销毁逻辑、精简用户传入信息过程，低耦合性提高架构灵活度等多方优势
-- 新增情绪识别功能，支持8种基本的饱满情绪检测
-- 新增内容服务模块，展示游戏道具及精品贴纸，主要包括游戏类、情节类、头饰类、氛围类等丰富的特效道具
-- 新增异步接口，改善用户在低端设备上帧率不足问题
-- 优化美体性能，Android端帧率上升24%，iOS端耗时下降13%
-- 优化人像分割性能，Andriod端帧率上升39%，iOS耗时下降39%
-- 优化人像分割效果，主要包括优化缝隙问题，使人像分割更加贴合人体，不会有明显空隙；提升人体分割准确性，减少背景误识别情况
-- 增加人像分割新玩法，开放用户自定义背景接口，便于用户快速换背景；支持人像描边玩法，可自定义描边的宽度、距离、颜色
-- 增加Animoji无尾熊模型；优化Animoji面部驱动效果，提升驱动后模型的稳定性和灵敏度
-- 优化美妆效果，主要包括唇部遮挡时口红不再显现；提升美瞳的贴合度；增加多款美瞳素材
+ - 优化2D人体点位和美体性能。
+ - 优化人像分割效果和性能。优化手臂和手识别不稳定问题，优化背景误识别问题。修复人像分割偏移问题。
+ - 优化美妆效果。优化美瞳贴合效果和溢色问题；优化唇妆遮挡效果，遮挡时口红不再显现。
+ - 优化Animoji面部驱动效果。优化小幅度动作，如小幅度张嘴和眨眼时，驱动效果更加灵敏。
+ - 优化情绪识别，支持8种基本情绪识。
+ - 新增接口fuSetUseAsyncAIInference，支持异步模式，开启异步模式，帧率提升，可改善客户在一些低端设备上帧率不足问题。
+ - 新增fuRender接口，为所有业务统一渲染接口，详见接口定义。
+ - 新增接口 fuSetInputBufferMatrix，fuSetInputCameraBufferMatrixState，fuSetInputTextureMatrix，fuSetInputCameraTextureMatrixState，fuSetOutputMatrix，fuSetOutputMatrixState，用于设置图像转换矩阵，用于调整输出图像方向，详见接口定义。
+
 
 **2021-01-25 v7.3.2:**
 
@@ -32,7 +37,7 @@ SDK版本: 7.3.2
 
 5. 修复SDK在Mac 10.11上crash问题。
 
-6. 修复SDK在贴纸和Animoji混用时crash问题。
+6. 修复SDK在贴纸和Animoji混用时crash问题。  
 
 **2020-12-29 v7.3.0:**
 
@@ -668,10 +673,10 @@ public static native int fuDualInputToTexture(byte[] img, int tex_in, int flags,
 
 ---
 
-##### fuDualInputToTexture  视频处理双输入接口，自定义 byte[] 数据回写
+##### fuRenderDualInput  视频处理双输入接口，自定义 byte[] 数据回写
 
 ```java
-public static native int fuDualInputToTexture(byte[] img, int tex_in, int flags, int w, int h, int frame_id, int[] items, int readback_w, int readback_h, byte[] readback_img);
+public static native int fuRenderDualInput(int w, int h, int frame_id, int[] items, int tex_in, int flags, byte[] img, int imgType, int readback_w, int readback_h, byte[] readback_img);
 ```
 
 **接口说明：**
@@ -679,13 +684,6 @@ public static native int fuDualInputToTexture(byte[] img, int tex_in, int flags,
 将输入的图像数据，送入SDK流水线进行处理，并输出处理之后的图像数据。该接口会执行所有道具要求、且证书许可的功能模块，包括人脸检测与跟踪、美颜、贴纸或avatar绘制等。
 
 **参数说明：**
-
-`img ` 图像数据byte[]，支持的格式为：NV21（默认）、I420、RGBA
-
-`tex_in ` 图像数据纹理ID
-
-`flags ` flags，可以指定数据img数据格式，返回纹理ID的道具镜像等，详见后文”Android 双输入“部分说明
-
 `w ` 图像数据的宽
 
 `h ` 图像数据的高
@@ -693,6 +691,14 @@ public static native int fuDualInputToTexture(byte[] img, int tex_in, int flags,
 `frame_id ` 当前处理的视频帧序数
 
 `items ` 包含多个道具句柄的int数组
+
+`tex_in ` 图像数据纹理ID
+
+`flags ` flags，可以指定数据img数据格式，返回纹理ID的道具镜像等，详见后文”Android 双输入“部分说明
+
+`img ` 图像数据byte[]，支持的格式为：NV21（默认）、I420、RGBA
+
+`imgType ` 图像数据类型，faceunity.FU_FORMAT_NV21_BUFFER  faceunity.FU_FORMAT_RGBA_BUFFER faceunity.FU_FORMAT_I420_BUFFER   YUV：0
 
 `readback_w ` 需要回写的图像数据的宽
 
@@ -712,10 +718,10 @@ public static native int fuDualInputToTexture(byte[] img, int tex_in, int flags,
 
 ---
 
-##### fuRenderToTexture 视频处理单输入接口
+##### fuRenderTexture 视频处理单纹理输入接口
 
 ```java
-public static native int fuRenderToTexture(int tex_in, int w, int h, int frame_id, int[] items, int flags);
+ public static native int fuRenderTexture(int w, int h, int frame_id, int[] items, int tex_in, int flags);
 ```
 
 **接口说明：**
@@ -724,8 +730,6 @@ public static native int fuRenderToTexture(int tex_in, int w, int h, int frame_i
 
 **参数说明：**
 
-`tex_in ` 图像纹理 ID
-
 `w ` 图像数据的宽
 
 `h ` 图像数据的高
@@ -733,6 +737,8 @@ public static native int fuRenderToTexture(int tex_in, int w, int h, int frame_i
 `frame_id ` 当前处理的视频帧序数
 
 `items ` 包含多个道具句柄的int数组
+
+`tex_in ` 图像纹理 ID
 
 `flags ` flags，可以指定返回纹理ID的道具镜像等，详见后文”Android 双输入“部分说明
 
@@ -748,10 +754,11 @@ public static native int fuRenderToTexture(int tex_in, int w, int h, int frame_i
 
 -------
 
-##### fuRenderToNV21Image   视频处理单输入接口
+##### fuRenderImg   视频处理单图象输入接口
 
 ```java
-public static native int fuRenderToNV21Image(byte[] img, int w, int h, int frame_id, int[] items, int flags);
+public static native int fuRenderImg(int w, int h, int frame_id, int[] items, int flags, byte[] img, int imgType, int readback_w, int readback_h, byte[] readback_img);
+
 ```
 
 **接口说明：**
@@ -759,8 +766,6 @@ public static native int fuRenderToNV21Image(byte[] img, int w, int h, int frame
 将输入的图像数据，送入SDK流水线进行处理，并输出处理之后的图像数据。该接口会执行所有道具要求、且证书许可的功能模块，包括人脸检测与跟踪、美颜、贴纸或avatar绘制等。
 
 **参数说明：**
-
-`img ` 图像数据byte[]，被处理过的的图像数据会回写到该byte[]中
 
 `w ` 图像数据的宽
 
@@ -771,6 +776,16 @@ public static native int fuRenderToNV21Image(byte[] img, int w, int h, int frame
 `items ` 包含多个道具句柄的int数组
 
 `flags ` flags，可以指定返回纹理ID的道具镜像等，详见后文”Android 双输入“部分说明
+
+`img ` 图像数据byte[]，被处理过的的图像数据会回写到该byte[]中
+
+`imgType ` 图像数据类型，faceunity.FU_FORMAT_NV21_BUFFER  faceunity.FU_FORMAT_RGBA_BUFFER faceunity.FU_FORMAT_I420_BUFFER   YUV：0
+
+`readback_w ` 需要回写的图像数据的宽
+
+`readback_h ` 需要回写的图像数据的高
+
+`readback_img ` 需要回写的图像数据byte[]
 
 **返回值：**
 
@@ -784,208 +799,13 @@ public static native int fuRenderToNV21Image(byte[] img, int w, int h, int frame
 
 ---
 
-##### fuRenderToNV21Image   视频处理单输入接口，自定义 byte[] 数据回写
+ 
+
+##### fuRenderYUV    视频处理单输入接口，YUV数据格式
 
 ```java
-public static native int fuRenderToNV21Image(byte[] img, int w, int h, int frame_id, int[] items, int flags, int readback_w, int readback_h, byte[] readback_img);
-```
+ public static native int fuRenderYUV(int w, int h, int frame_id, int[] items, int flags, byte[] y_buffer, byte[] u_buffer, byte[] v_buffer, int y_stride, int u_stride, int v_stride, boolean read_back);
 
-**接口说明：**
-
-将输入的图像数据，送入SDK流水线进行处理，并输出处理之后的图像数据。该接口会执行所有道具要求、且证书许可的功能模块，包括人脸检测与跟踪、美颜、贴纸或avatar绘制等。
-
-**参数说明：**
-
-`img ` 图像数据byte[]，被处理过的的图像数据会回写到该byte[]中
-
-`w ` 图像数据的宽
-
-`h ` 图像数据的高
-
-`frame_id ` 当前处理的视频帧序数
-
-`items ` 包含多个道具句柄的int数组
-
-`flags ` flags，可以指定返回纹理ID的道具镜像等，详见后文”Android 双输入“部分说明
-
-`readback_w ` 需要回写的图像数据的宽
-
-`readback_h ` 需要回写的图像数据的高
-
-`readback_img ` 需要回写的图像数据byte[]
-
-**返回值：**
-
-`int ` 被处理过的的图像数据纹理ID。纹理返回的数据为 2D。
-
-**备注：**
-
-该绘制接口需要OpenGL环境，环境异常会导致崩溃。
-
-美颜处理后的图像数据会以相同宽高回写到对应的 img 中。
-
----
-
-##### fuRenderToI420Image   视频处理单输入接口，I420数据格式
-
-```java
-public static native int fuRenderToI420Image(byte[] img, int w, int h, int frame_id, int[] items, int flags);
-```
-
-**接口说明：**
-
-将输入的图像数据，送入SDK流水线进行处理，并输出处理之后的图像数据。该接口会执行所有道具要求、且证书许可的功能模块，包括人脸检测与跟踪、美颜、贴纸或avatar绘制等。
-
-**参数说明：**
-
-`img ` I420的图像数据byte[]，被处理过的的图像数据会回写到该byte[]中
-
-`w ` 图像数据的宽
-
-`h ` 图像数据的高
-
-`frame_id ` 当前处理的视频帧序数
-
-`items ` 包含多个道具句柄的int数组
-
-`flags ` flags，可以指定返回纹理ID的道具镜像等，详见后文”Android 双输入“部分说明
-
-**返回值：**
-
-`int ` 被处理过的的图像数据纹理ID。返回值小于等于0为异常，具体信息通过`fuGetSystemError`获取。纹理返回的数据为 2D。
-
-**备注：**
-
-该绘制接口需要OpenGL环境，环境异常会导致崩溃。
-
-美颜处理后的图像数据默认会以相同宽高写回 img。如果需要自定义输出数据，请调用带有 readback 参数的 `fuRenderToI420Image` 接口。
-
----
-
-##### fuRenderToI420Image   视频处理单输入接口，I420数据格式，自定义 byte[] 数据回写
-
-```java
-public static native int fuRenderToI420Image(byte[] img, int w, int h, int frame_id, int[] items, int flags, int readback_w, int readback_h, byte[] readback_img);
-```
-
-**接口说明：**
-
-将输入的图像数据，送入SDK流水线进行处理，并输出处理之后的图像数据。该接口会执行所有道具要求、且证书许可的功能模块，包括人脸检测与跟踪、美颜、贴纸或avatar绘制等。
-
-**参数说明：**
-
-`img ` I420的图像数据byte[]，被处理过的的图像数据会回写到该byte[]中
-
-`w ` 图像数据的宽
-
-`h ` 图像数据的高
-
-`frame_id ` 当前处理的视频帧序数
-
-`items ` 包含多个道具句柄的int数组
-
-`flags ` flags，可以指定返回纹理ID的道具镜像等，详见后文”Android 双输入“部分说明
-
-`readback_w ` 需要回写的图像数据的宽
-
-`readback_h ` 需要回写的图像数据的高
-
-`readback_img ` 需要回写的图像数据byte[]
-
-**返回值：**
-
-`int ` 被处理过的的图像数据纹理ID。返回值小于等于0为异常，具体信息通过`fuGetSystemError`获取。纹理返回的数据为 2D。
-
-**备注：**
-
-该绘制接口需要OpenGL环境，环境异常会导致崩溃。
-
-美颜处理后的图像数据会以相同宽高回写到对应的 img 中。
-
----
-
-##### fuRenderToRgbaImage   视频处理单输入接口，Rgba数据格式
-
-```java
-public static native int fuRenderToRgbaImage(byte[] img, int w, int h, int frame_id, int[] items, int flags);
-```
-
-**接口说明：**
-
-将输入的图像数据，送入SDK流水线进行处理，并输出处理之后的图像数据。该接口会执行所有道具要求、且证书许可的功能模块，包括人脸检测与跟踪、美颜、贴纸或avatar绘制等。
-
-**参数说明：**
-
-`img ` Rgba的图像数据byte[]，被处理过的的图像数据会回写到该byte[]中
-
-`w ` 图像数据的宽
-
-`h ` 图像数据的高
-
-`frame_id ` 当前处理的视频帧序数
-
-`items ` 包含多个道具句柄的int数组
-
-`flags ` flags，可以指定返回纹理ID的道具镜像等，详见后文”Android 双输入“部分说明
-
-**返回值：**
-
-`int ` 被处理过的的图像数据纹理ID。返回值小于等于0为异常，具体信息通过`fuGetSystemError`获取。纹理返回的数据为 2D。
-
-**备注：**
-
-该绘制接口需要OpenGL环境，环境异常会导致崩溃。
-
-美颜处理后的图像数据会以相同宽高回写到对应的 img 中。如果需要自定义输出数据，请调用带有 readback 参数的 `fuRenderToRgbaImage` 接口。
-
----
-
-##### fuRenderToRgbaImage   视频处理单输入接口，Rgba数据格式，自定义 byte[] 数据回写
-
-```java
-public static native int fuRenderToRgbaImage(byte[] img, int w, int h, int frame_id, int[] items, int flags, int readback_w, int readback_h, byte[] readback_img);
-```
-
-**接口说明：**
-
-将输入的图像数据，送入SDK流水线进行处理，并输出处理之后的图像数据。该接口会执行所有道具要求、且证书许可的功能模块，包括人脸检测与跟踪、美颜、贴纸或avatar绘制等。
-
-**参数说明：**
-
-`img ` Rgba的图像数据byte[]，被处理过的的图像数据会回写到该byte[]中
-
-`w ` 图像数据的宽
-
-`h ` 图像数据的高
-
-`frame_id ` 当前处理的视频帧序数
-
-`items ` 包含多个道具句柄的int数组
-
-`flags ` flags，可以指定返回纹理ID的道具镜像等，详见后文”Android 双输入“部分说明
-
-`readback_w ` 需要回写的图像数据的宽
-
-`readback_h ` 需要回写的图像数据的高
-
-`readback_img ` 需要回写的图像数据byte[]
-
-**返回值：**
-
-`int ` 被处理过的的图像数据纹理ID。返回值小于等于0为异常，具体信息通过`fuGetSystemError`获取。纹理返回的数据为 2D。
-
-**备注：**
-
-该绘制接口需要OpenGL环境，环境异常会导致崩溃。
-
-美颜处理后的图像数据会以相同宽高回写到对应的 img 中。
-
-----
-
-##### fuRenderToYUVImage    视频处理单输入接口，YUV数据格式
-
-```java
-public static native int fuRenderToYUVImage(byte[] y_buffer, byte[] u_buffer, byte[] v_buffer, int y_stride, int u_stride, int v_stride, int w, int h, int frame_id, int[] items, int flags);
 ```
 
 **接口说明：**
@@ -995,6 +815,16 @@ public static native int fuRenderToYUVImage(byte[] y_buffer, byte[] u_buffer, by
 将 items 中的道具绘制到 YUV 三通道的图像中。
 
 **参数说明：**
+
+`w ` 图像宽度
+
+`h ` 图像高度
+
+`frame_id ` 当前处理的视频帧序数，每次处理完对其进行加 1 操作，不加 1 将无法驱动道具中的特效动画
+
+`items ` 包含多个道具句柄的 int 数组，包括普通道具、美颜道具、手势道具等
+
+`flags ` flags，可以指定返回纹理ID的道具镜像等
 
 `y_buffer ` Y帧图像数据byte[]
 
@@ -1008,15 +838,8 @@ public static native int fuRenderToYUVImage(byte[] y_buffer, byte[] u_buffer, by
 
 `v_stride ` V帧stride
 
-`w ` 图像宽度
+`read_back ` 是否需要回写
 
-`h ` 图像高度
-
-`frame_id ` 当前处理的视频帧序数，每次处理完对其进行加 1 操作，不加 1 将无法驱动道具中的特效动画
-
-`items ` 包含多个道具句柄的 int 数组，包括普通道具、美颜道具、手势道具等
-
-`flags ` flags，可以指定返回纹理ID的道具镜像等
 
 **返回值：**
 
@@ -1366,6 +1189,218 @@ public static native void fuHexagonTearDown();
 ---
 
 #### 2.5 功能接口 - 系统
+
+##### TRANSFORM_MATRIX 定义
+一张图像最多只有8个方位方向，TRANSFORM_MATRIX定义了将一张图像进行变换，变换的顺序为先逆时针旋转，然后镜像。
+```C
+typedef enum TRANSFORM_MATRIX {
+  /*
+   * 8 base orientation cases, first do counter-clockwise rotation in degree,
+   * then do flip
+   */
+  DEFAULT = 0,             // no rotation, no flip
+  CCROT0 = DEFAULT,        // no rotation, no flip
+  CCROT90,                 // counter-clockwise rotate 90 degree
+  CCROT180,                // counter-clockwise rotate 180 degree
+  CCROT270,                // counter-clockwise rotate 270 degree
+  CCROT0_FLIPVERTICAL,     // vertical flip
+  CCROT0_FLIPHORIZONTAL,   // horizontal flip
+  CCROT90_FLIPVERTICAL,    // first counter-clockwise rotate 90 degree，then
+                           // vertical flip
+  CCROT90_FLIPHORIZONTAL,  // first counter-clockwise rotate 90 degree，then
+                           // horizontal flip
+  /*
+   * enums below is alias to above enums, there are only 8 orientation cases
+   */
+  CCROT0_FLIPVERTICAL_FLIPHORIZONTAL = CCROT180,
+  CCROT90_FLIPVERTICAL_FLIPHORIZONTAL = CCROT270,
+  CCROT180_FLIPVERTICAL = CCROT0_FLIPHORIZONTAL,
+  CCROT180_FLIPHORIZONTAL = CCROT0_FLIPVERTICAL,
+  CCROT180_FLIPVERTICAL_FLIPHORIZONTAL = DEFAULT,
+  CCROT270_FLIPVERTICAL = CCROT90_FLIPHORIZONTAL,
+  CCROT270_FLIPHORIZONTAL = CCROT90_FLIPVERTICAL,
+  CCROT270_FLIPVERTICAL_FLIPHORIZONTAL = CCROT90,
+} TRANSFORM_MATRIX;
+```
+DEFAULT或CCROT0默认输入方向不做处理。CCROT90为逆时针旋转90度。CCROT90_FLIPVERTICAL为先逆时针旋转90度，然后再竖直方向翻转。如下图所示，
+
+![orientationall](imgs/orientationall.png)
+
+------
+
+##### fuSetInputTextureMatrix 函数
+
+设置输入源纹理朝向
+
+```java
+/**
+ \brief input description for fuRender api, use to transform the input gpu
+ texture to portrait mode(head-up). then the final output will portrait mode.
+ the outter user present render pass should use identity matrix to present the
+ result.
+ \param tex_trans_mat, the transform matrix use to transform the input
+ texture to portrait mode.
+ \note when your input is cpu buffer only don't use
+ this api, fuSetInputCameraBufferMatrix will handle all case.
+ */
+public static native void fuSetInputTextureMatrix(int tMat);
+```
+__参数:__  
+`tMat`：旋转类别，参见TRANSFORM_MATRIX定义。
+CCROT0：0
+CCROT90：1
+CCROT180：2
+CCROT270：3
+CCROT0_FLIPVERTICAL：4
+CCROT0_FLIPHORIZONTAL：5
+CCROT90_FLIPVERTICAL：6
+CCROT90_FLIPHORIZONTAL：7
+
+##### fuSetInputCameraTextureMatrixState 函数
+
+```java
+public static native void fuSetInputCameraTextureMatrixState(int enable);
+```
+
+**接口说明：**
+
+设置由`fuSetInputTextureMatrix`设置的TransformMatrix是否生效。
+
+**参数说明：**
+
+`enable`: 1 生效，0 不生效
+
+------
+
+##### fuSetInputBufferMatrix 函数
+
+```java
+/**
+ \brief input description for fuRender api, use to transform the input cpu
+ buffer to portrait mode(head-up). then the final output will portrait mode. the
+ outter user present render pass should use identity matrix to present the
+ result.
+ \param buf_trans_mat, the transform matrix use to transform the input
+ cpu buffer to portrait mode.
+ \note when your input is gpu texture only don't
+ use this api, fuSetInputCameraTextureMatrix will handle all case.
+ */
+public static native void fuSetInputBufferMatrix(int tMat);
+```
+**接口说明：**
+
+设置输入源Buffer朝向
+
+**参数说明：**
+
+`tMat`：旋转类别，参见TRANSFORM_MATRIX定义。
+CCROT0：0
+CCROT90：1
+CCROT180：2
+CCROT270：3
+CCROT0_FLIPVERTICAL：4
+CCROT0_FLIPHORIZONTAL：5
+CCROT90_FLIPVERTICAL：6
+CCROT90_FLIPHORIZONTAL：7
+
+##### fuSetInputCameraBufferMatrixState 函数
+
+```java
+public static native void fuSetInputCameraTextureMatrixState(int enable);
+```
+
+**接口说明：**
+
+设置由`fuSetInputBufferMatrix`设置的TransformMatrix是否生效。
+
+**参数说明：**
+
+`enable`: 1 生效，0 不生效
+
+------
+
+##### fuSetOutputMatrix 函数
+
+```java
+/**
+ \brief add optional transform for final result, when use
+ fuSetInputCameraTextureMatrix/fuSetInputCameraBufferMatrix, we means the output
+ is in portrait mode(head-up), and the outter user present render pass should
+ use identity matrix to present the result. but in some rare case, user would
+ like to use a diffent orientation output. in this case,use
+ fuSetInputCameraTextureMatrix/fuSetInputCameraBufferMatrix(portrait mode), then
+ use the additional fuSetOutputMatrix to transform the final result to perfer
+ orientation.
+ \note Don't use this api unless you have to!
+ */
+public static native void fuSetOutputMatrix(int bMat);
+```
+**接口说明：**
+
+修改输出数据朝向
+
+**参数说明：**
+
+`tMat`：旋转类别，参见TRANSFORM_MATRIX定义。
+CCROT0：0
+CCROT90：1
+CCROT180：2
+CCROT270：3
+CCROT0_FLIPVERTICAL：4
+CCROT0_FLIPHORIZONTAL：5
+CCROT90_FLIPVERTICAL：6
+CCROT90_FLIPHORIZONTAL：7
+
+__备注:__  
+当使用`fuSetInputCameraTextureMatrix`,`fuSetInputCameraBufferMatrix`设置TransformMatrix后，如需要再调整输出图像buffer，可以`fuSetOutputMatrix`进一步调整输出方向。 
+
+------
+
+##### fuSetOutputMatrixState 函数
+```java
+/**
+ \brief set additional transform matrix state, turn on or turn off
+ */
+public static native void fuSetOutputMatrixState(int enable);
+```
+
+**接口说明：**
+设置由`fuSetOutputMatrix`设置的TransformMatrix是否生效。
+
+
+**参数说明：**
+
+`enable`: 1 生效，0 不生效
+
+------
+
+##### fuSetUseAsyncAIInference 函数 
+```java
+/**
+ * \brief set use async ai inference.
+ * \param use_async,
+ * ture or false.
+ */
+public static native int fuSetUseAsyncAIInference(int use);
+```
+
+**接口说明：**
+
+设置是否使用AI异步模式。
+
+**参数说明：**
+
+`use`： 1 开启，0 关闭 
+
+**返回值：**
+
+1为设置成功，0设置失败 
+
+**备注: ** 
+
+当开启异步时，整体渲染帧率能够提升，CPU占用率也升高。
+
+------
 
 ##### fuBindItems 函数
 

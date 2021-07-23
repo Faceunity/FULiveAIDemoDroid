@@ -14,10 +14,13 @@ public class Effect {
     public static final String MODULE_CODE_FACE_LANDMARKS = "0-4096";
     public static final String MODULE_CODE_FACE_TONGUE = "0-8192";
     public static final String MODULE_CODE_FACE_EXPRESSION = "2048-0";
-    // TODO: 2021/2/5 0005 authcode
-    public static final String MODULE_CODE_FACE_EMOTION = "2048-0";
+    public static final String MODULE_CODE_FACE_EMOTION = "2048-1";
     public static final String MODULE_CODE_HUMAN_LANDMARKS = "0-16384";
-    public static final String MODULE_CODE_HUMAN_SKELETON = "0-128";
+    public static final String MODULE_CODE_HUMAN_LANDMARKS_FULL = "0-16385";
+    public static final String MODULE_CODE_HUMAN_LANDMARKS_HALF = "0-16386";
+    public static final String MODULE_CODE_HUMAN_SKELETON = "0-127";
+    public static final String MODULE_CODE_HUMAN_SKELETON_FULL = "0-128";
+    public static final String MODULE_CODE_HUMAN_SKELETON_HALF = "0-129";
     public static final String MODULE_CODE_HAND_GESTURE = "512-0";
     public static final String MODULE_CODE_HUMAN_SEGMENTATION = "256-0";
     public static final String MODULE_CODE_HAIR_SEGMENTATION = "1048576-0";
@@ -27,6 +30,7 @@ public class Effect {
     /* type */
     public static final int TYPE_FACE = 1;
     public static final int TYPE_HUMAN = 2;
+        public static final int TYPE_HUMAN_FULL_OR_HALF = 6;//特殊人体或者骨骼子项 全身 或者 半身
     public static final int TYPE_GESTURE = 3;
     public static final int TYPE_SEGMENTATION = 4;
     public static final int TYPE_ACTION = 5;

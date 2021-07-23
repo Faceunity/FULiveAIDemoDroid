@@ -46,6 +46,13 @@ public abstract class BaseRecyclerAdapter<T> extends RecyclerView.Adapter<BaseRe
     private static final int DEFAULT_SELECTED_POSITION = Integer.MIN_VALUE;
     // 单选上次选中的 view 位置
     protected int mLastSelected = DEFAULT_SELECTED_POSITION;
+
+    public void setData(List<T> data) {
+        mData.clear();
+        mData.addAll(data);
+        notifyDataSetChanged();
+    }
+
     // 数据集
     protected List<T> mData;
     // item 布局资源

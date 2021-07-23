@@ -2,15 +2,21 @@
 
 级别：Public 
 
-更新日期：2021-04-19
+更新日期：2021-07-13
 
-SDK版本: 7.4.0
+SDK版本: 7.4.1
 
 ------
 ### 最新更新内容：
 
-**2021-04-19 v7.4.0:**
+**2021-07-13 v7.4.1:**
 
+- 更新精品贴纸8款，包含2款PK游戏，5款装饰及互动贴纸，1款全身驱动道具
+- 更新2款中国风Animoji模型
+- 修复人像分割贴纸效果问题，修复后人像分割结果和贴纸效果会同时出现
+- 修复一些bug，包括高分辨率磨皮效果问题，人脸检测与贴纸绘制的时序问题
+
+**2021-04-19 v7.4.0:**
 - 【Demo层】重构特效Demo，将面向过程变成改为面向对象，整体结构逻辑更清晰，客户调用更便捷。同时具有节省内存、优化itemID自动销毁逻辑、精简用户传入信息过程，低耦合性提高架构灵活度等多方优势
 - 新增情绪识别功能，支持8种基本的饱满情绪检测
 - 新增内容服务模块，展示游戏道具及精品贴纸，主要包括游戏类、情节类、头饰类、氛围类等丰富的特效道具
@@ -21,7 +27,6 @@ SDK版本: 7.4.0
 - 增加人像分割新玩法，开放用户自定义背景接口，便于用户快速换背景；支持人像描边玩法，可自定义描边的宽度、距离、颜色
 - 增加Animoji无尾熊模型；优化Animoji面部驱动效果，提升驱动后模型的稳定性和灵敏度
 - 优化美妆效果，主要包括唇部遮挡时口红不再显现；提升美瞳的贴合度；增加多款美瞳素材
-
 
 **2021-01-25 v7.3.2:**
 
@@ -59,7 +64,6 @@ SDK版本: 7.4.0
 7. 优化人脸跟踪稳定性，提升贴纸的稳定性。
 8. 提供独立核心算法SDK，接口文档详见算法SDK文档。
 9. 人脸算法能力接口封装，算法demo中新增包括人脸特征点位、表情识别和舌头动作3项核心人脸能力。
-
 ------
 ### 目录：
 
@@ -84,70 +88,64 @@ Demo新增了一个展示Faceunity产品列表的主界面，新版Demo将根据
 本小节，描述Demo文件结构，各个目录，以及重要文件的功能。
 
 ```
-+FULiveDemoDroid
-  +app 			                           // app 模块
++Kotlin_FaceUnity_Demo
+  +app 			                            // app 模块
+    +libs
+      -fu_core-release.aar                  // 特效SDK
     +src
       +main
-        +assets     
-          +bg_seg_green                    // 绿幕抠像
-            +sample                        // 背景资源
-            -green_screen.bundle           // 抠像道具
-          +change_face                     // 海报换脸
-            +template_xx                   // 模板资源
-            -change_face.bundle            // 海报换脸道具
-          +effect                          // 各种道具
-            +animoji                       // Animoji
-            +ar                            // AR 面具
-            +big_head                      // 搞笑大头
-            +expression                    // 表情识别
-            +facewarp                      // 哈哈镜
-            +gesture                       // 手势识别
-            +hair_seg                      // 美发道具
-            +musicfilter                   // 音乐滤镜
-            +normal                        // 道具贴纸
-            +portrait_drive                // 人像驱动
-            +segment                       // 人像分割
-            -actiongame_android.bundle     // 动作识别
-          +face_beauty_config              // 美颜风格推荐
-          +light_makeup                    // 轻美妆
-            +blusher...                    // 腮红等资源
-            -light_makeup.bundle           // 轻美妆道具
-          +makeup                          // 美妆
-            +combination_bundle            // 组合妆 bundle 资源
-            +config_json                   // 组合妆 json 资源
-            +item_bundle                   // 美妆子妆 bundle 资源
-            -color_setup.json              // 颜色配置
-          +pta                             // 全身 Avatar
-            +boy                           // 男孩效果道具
-            +gesture                       // 手势算法模型
-            +girl                          // 女孩效果道具
-            -controller_config.bundle      // controller 配置文件
-            -default_bg.bundle             // 白色背景
-        +java                              // Java 源码
-        +res                               // App 资源文件
+        +assets      
+          +animoji                          // 动漫滤镜 
+          +bg_seg_green                     // 绿幕抠像 
+          +change_face                      // 海报换脸 
+          +effect                           // 各种道具
+            +action                         // 动作识别
+            +ar                             // AR 面具
+            +big_head                       // 搞笑大头
+            +expression                     // 表情识别
+            +facewarp                       // 哈哈镜
+            +gesture                        // 手势识别 
+            +musicfilter                    // 音乐滤镜
+            +normal                         // 道具贴纸 
+            +segment                        // 人像分割 
+          +graphics                         // 图形效果道具
+            -body_slim.bundle               // 美体道具
+            -controller_cpp.bundle          // 全身 Avatar 道具
+            -face_beautification.bundle     // 美颜道具
+            -face_makeup.bundle             // 美妆道具
+            -fuzzytoonfilter.bundle         // 动漫滤镜道具
+            -fxaa.bundle                    // 3D 绘制抗锯齿
+            -tongue.bundle                  // 舌头跟踪数据包
+          +hair_seg                         // 美发
+          +light_makeup                     // 轻美妆
+            +blusher...                     // 腮红等资源
+            -light_makeup.bundle            // 轻美妆道具
+          +makeup                           // 美妆
+            +combination_bundle             // 组合妆 bundle 资源
+            +config_json                    // 组合妆 json 资源
+            +item_bundle                    // 美妆子妆 bundle 资源
+            -color_setup.json               // 颜色配置
+          +model                            // 算法能力模型
+            -ai_face_processor.bundle       // 人脸识别AI能力模型
+            -ai_face_processor_lite.bundle  // 人脸识别AI能力模型，轻量版
+            -ai_hairseg.bundle              // 头发识别AI能力模型
+            -ai_hand_processor.bundle       // 手势识别AI能力模型
+            -ai_human_processor.bundle      // 人体点位AI能力模型
+          +pta                              // 全身 Avatar
+            +bear                           // 熊效果道具
+            +boy                            // 男孩效果道具
+            +gesture                        // 手势算法模型
+            +girl                           // 女孩效果道具
+            -controller_config.bundle       // controller 配置文件
+            -default_bg.bundle              // 白色背景
+        +java                               // Java 源码
+        +res                                // App 资源文件
 
-  +faceunity                               // faceunity 模块
-    +libs                                  
-      -nama.jar                            // nama.jar
+  +fu_ui                                    // UI 模块
     +src
       +main
-        +assets
-          +graphic                         // 图形效果道具
-            -body_slim.bundle              // 美体道具
-            -controller.bundle             // 全身 Avatar 道具
-            -face_beautification.bundle    // 美颜道具
-            -face_makeup.bundle            // 美妆道具
-            -fuzzytoonfilter.bundle        // 动漫滤镜道具
-            -fxaa.bundle                   // 3D 绘制抗锯齿
-            -tongue.bundle                 // 舌头跟踪数据包
-          +model                           // 算法能力模型
-            -ai_face_processor.bundle      // 人脸识别AI能力模型，需要默认加载
-            -ai_face_processor_lite.bundle // 人脸识别AI能力模型，轻量版
-            -ai_hand_processor.bundle      // 手势识别AI能力模型
-			-ai_human_processor.bundle     // 人体点位AI能力模型
-        +java                              // Java 源码
-        +jniLibs                           // CNama fuai 库
-  +docs		    	                       // 开发文档目录
+        +java                              // Java 源码 
+  +doc		    	                       // 开发文档目录
   +README.md	 	                       // 工程说明文档
 ```
 
@@ -169,26 +167,26 @@ Android Studio 3.4 及以上
 
 - 下载 [FULiveDemoDroid](https://github.com/Faceunity/FULiveDemoDroid) 工程
 - 获取证书:
-  1. 拨打电话 **0571-88069272** 
+  1. 拨打电话 **0571-89774660** 
   2. 发送邮件至 **marketing@faceunity.com** 进行咨询。
 
 #### 3.3 相关配置
 
-Android 端发放的证书为 authpack.java 文件，如果您已经获取到鉴权证书，将证书文件放到工程中 faceunity 模块 com.faceunity 包下即可。
+Android 端发放的证书为 authpack.java 文件，如果您已经获取到鉴权证书，将证书文件放到工程中 app 模块 com.faceunity.app 包下即可。
 
 #### 3.4 编译运行
 
 - 点击 Sync 按钮，同步一下工程。或者 Build-->Make Projects。
 
-![AS-Make-Project](imgs/as-make-project.png)
+![AS-Make-Project](nama/imgs/as-make-project.png)
 
 - 点击 Run 按钮运行，部署到手机上。
 
-![AS-Run](imgs/as-run.png)
+![AS-Run](nama/imgs/as-run.png)
 
 - Demo 运行效果。
 
-![fulivedemo](imgs/fulivedemo.png)
+![fulivedemo](nama/imgs/fulivedemo.png)
 
 ------
 ### 4. 常见问题 

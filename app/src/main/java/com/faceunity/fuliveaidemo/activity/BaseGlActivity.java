@@ -2,6 +2,7 @@ package com.faceunity.fuliveaidemo.activity;
 
 import android.app.Dialog;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
@@ -12,6 +13,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.fragment.app.FragmentTransaction;
@@ -20,38 +22,39 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
 
+import com.faceunity.core.entity.FURenderOutputData;
+import com.faceunity.core.media.photo.OnPhotoRecordingListener;
+import com.faceunity.core.media.photo.PhotoRecordHelper;
+import com.faceunity.core.utils.GlUtil;
 import com.faceunity.fuliveaidemo.R;
-import com.faceunity.fuliveaidemo.renderer.OnRendererListener;
 import com.faceunity.fuliveaidemo.util.DensityUtils;
+import com.faceunity.fuliveaidemo.util.FileUtils;
 import com.faceunity.fuliveaidemo.util.LifecycleHandler;
-import com.faceunity.fuliveaidemo.util.PhotoTaker;
 import com.faceunity.fuliveaidemo.util.ToastUtil;
 import com.faceunity.fuliveaidemo.view.ConfigFragment;
 import com.faceunity.fuliveaidemo.view.OnMultiClickListener;
+import com.faceunity.fuliveaidemo.view.RecordButton;
 import com.faceunity.fuliveaidemo.view.adapter.BaseRecyclerAdapter;
 import com.faceunity.fuliveaidemo.view.adapter.SpaceItemDecoration;
-import com.faceunity.nama.Effect;
 import com.faceunity.nama.FURenderer;
+import com.faceunity.nama.view.bean.TrackType;
+import com.faceunity.nama.view.listener.TypeEnum;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * @author Richie on 2020.05.21
  */
-public abstract class BaseGlActivity extends AppCompatActivity implements PhotoTaker.OnPictureTakeListener,
-        OnRendererListener, FURenderer.OnSystemErrorListener {
+public abstract class BaseGlActivity extends AppCompatActivity implements OnPhotoRecordingListener {
     private static final String TAG = "BaseGlActivity";
     public static final int RECOGNITION_TYPE_GESTURE = 421;
     public static final int RECOGNITION_TYPE_ACTION = 230;
     public static final int RECOGNITION_TYPE_NONE = -1;
     //    连续三帧检测到才认为成功
     private static final int FACE_DETECT_OK_THRESHOLD = 3;
-
     private ConfigFragment mConfigFragment;
     private View mViewMask;
     protected TextView mTvTrackStatus;
@@ -59,7 +62,6 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     private View mIvFooterMask;
     private View mTvExpressionTip;
     protected GLSurfaceView mGlSurfaceView;
-    protected PhotoTaker mPhotoTaker;
     protected ViewClickListener mViewClickListener;
     protected FURenderer mFURenderer;
     private RecyclerView mRvTongueTrack;
@@ -70,6 +72,7 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     private ExpressionAdapter mExpressionAdapter;
     private RecyclerView mRvRecognition;
     private RecognitionAdapter mRecognitionAdapter;
+    public RecordButton mRecordBtn;
     private List<RecognitionListData> mActionResourceList;
     private List<RecognitionListData> mGestureResourceList;
     private int mRecognitionIndex = -1;
@@ -88,8 +91,9 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     private int[] mDetectExpressionIndexes;
     protected boolean mIsFlipX;
     private LifecycleHandler mLifecycleHandler;
-    private Effect mFaceLandmarksEffect;
-    private Effect mAiTypeEffect;
+    private TrackType trackType = new TrackType();
+    public TypeEnum mTypeEnum = TypeEnum.EFFECT;
+
     private final Runnable mUpdateHumanRecyclerTask = new Runnable() {
         @Override
         public void run() {
@@ -152,6 +156,7 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         setContentView(R.layout.activity_base);
 
         mViewClickListener = new ViewClickListener();
+        mRecordBtn = findViewById(R.id.btn_record_video);
         findViewById(R.id.iv_home).setOnClickListener(mViewClickListener);
         findViewById(R.id.iv_config).setOnClickListener(mViewClickListener);
         mTvTrackStatus = findViewById(R.id.tv_track_status);
@@ -162,71 +167,25 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         mRvExpression = findViewById(R.id.rv_expression);
         mRvTongueTrack = findViewById(R.id.rv_tongue_track);
         mRvEmotionTrack = findViewById(R.id.rv_emotion_track);
-
-        mPhotoTaker = new PhotoTaker();
-        mPhotoTaker.setOnPictureTakeListener(this);
         mLifecycleHandler = new LifecycleHandler(getLifecycle());
-
+        mPhotoRecordHelper = new PhotoRecordHelper(mOnPhotoRecordingListener);
         initView();
         initGlRenderer();
         initFuRenderer();
-
-        Map<String, Object> paramMap = new HashMap<>(4);
-        paramMap.put(FURenderer.KEY_LANDMARKS_TYPE, FURenderer.FACE_LANDMARKS_239);
-        mFaceLandmarksEffect = new Effect(ConfigFragment.FACE_LANDMARKS_BUNDLE_PATH, getString(R.string.config_item_face_landmarks_75), Effect.TYPE_FACE, Effect.MODULE_CODE_FACE_LANDMARKS, paramMap);
-        paramMap = new HashMap<>(4);
-        paramMap.put(FURenderer.KEY_AI_TYPE, FURenderer.FACEPROCESSOR_EXPRESSION_RECOGNIZER);
-        mAiTypeEffect = new Effect(ConfigFragment.FACE_EXPRESSION_BUNDLE_PATH, getString(R.string.config_item_face_expression), Effect.TYPE_FACE, Effect.MODULE_CODE_FACE_EXPRESSION, paramMap);
+        findViewById(R.id.iv_config).performClick();
     }
 
     @Override
-    public void onSurfaceCreated() {
-        mFURenderer.onSurfaceCreated();
-        if (mFaceLandmarksEffect != null) {
-            mFURenderer.selectEffect(mFaceLandmarksEffect);
+    public void onRecordSuccess(Bitmap bitmap) {
+
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (mConfigFragment != null) {
+            mConfigFragment.bindCurrentRenderer();
         }
-    }
-
-    @Override
-    public void onSurfaceChanged(int viewWidth, int viewHeight) {
-
-    }
-
-    @Override
-    public void onSurfaceDestroy() {
-        mFURenderer.onSurfaceDestroyed();
-    }
-
-    @Override
-    public void onPictureTakeSucceed(final String path) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                ToastUtil.makeText(BaseGlActivity.this, R.string.save_photo_success).show();
-                Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(path)));
-                sendBroadcast(intent);
-            }
-        });
-    }
-
-    @Override
-    public void onPictureTakeFailed() {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                ToastUtil.makeText(BaseGlActivity.this, R.string.save_photo_failure).show();
-            }
-        });
-    }
-
-    @Override
-    public void onSystemError(final Effect effect) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                ToastUtil.makeText(BaseGlActivity.this, getResources().getString(R.string.toast_invalid_auth)).show();
-            }
-        });
     }
 
     /**
@@ -259,56 +218,117 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     }
 
     /**
-     * 1、使用人脸/人体/手势功能时，如未检测到人脸/人体/手势时显示对应提示语；
-     * 2、同时使用人脸人体或人脸手势功能时，如同时使用的两个功能都未检测到，而两个不同提示语无法同时显示在屏幕，则优先显示未检测到人脸的提示语。
+     * 查一下当前的人脸 人体 手势 选择情况
+     */
+    public void sure() {
+        trackType = mConfigFragment.getSelectedTrackType();
+    }
+
+    /**
+     * 提示优先级（手势和人体功能不可能同时出现）
+     * 未检测到人脸 > 未检测到人体 or 未检测到手势 > 未检测到全身，全身入境试试哦~
+     * <p>
+     * 例子：如下
+     * 单功能提示：
+     * 未检测到单功能项就做出对应提示（比如开启人脸 -> 未检测到的话“未检测到人脸”）
+     * 复合功能提示：
+     * 人脸 + 身体（全身 or 半身）
+     * ① 无人脸 无人体 -> 未检测到人脸
+     * ② 无人脸 有人体 -> 未检测到人脸
+     * ③ 有人脸 无人体 -> 未检测到人体 or 未检测到全身，全身入境试试哦~
+     * ④ 有人脸 有人体 -> 不提示
+     * <p>
+     * 人脸 + 手势
+     * ① 无人脸 无手势 -> 未检测到人脸
+     * ② 无人脸 有手势 -> 未检测到人脸
+     * ③ 有人脸 无手势 -> 未检测到手势
+     * ④ 有人脸 有手势 -> 不提示
      */
     protected void queryTrackStatus() {
-        int toastStrId = 0;
+        @StringRes int toastStrId = 0;
         boolean invisible = true;
         if (mConfigFragment != null) {
-            int selectedTrackType = mConfigFragment.getSelectedTrackType();
-            if (selectedTrackType == FURenderer.TRACK_TYPE_HUMAN) {
+            if (trackType.face && trackType.body >= 0) {//人脸 + 人体
                 boolean hasHuman = mFURenderer.queryHumanTrackStatus() > 0;
                 boolean hasFace = mFURenderer.queryFaceTrackStatus() > 0;
-                invisible = hasHuman || hasFace;
-                if (!invisible) {
-                    toastStrId = mConfigFragment.getToastStringId();
-                }
-                if (hasFace && !hasHuman) {
-                    toastStrId = mConfigFragment.getToastStringId();
-                    if (toastStrId == R.string.track_status_no_human_full
-                            || toastStrId == R.string.track_status_no_human) {
+                if (!hasFace) {
+                    //没人脸
+                    if (!hasFace) {//没人脸
+                        invisible = false;
+                        toastStrId = R.string.track_status_no_face;
+                    }
+                } else {
+                    //有人脸
+                    if (!hasHuman) {
+                        //有人脸没人体
+                        if (trackType.body == 0) {
+                            //全身
+                            toastStrId = R.string.track_status_no_human_full;
+                        } else {
+                            //半身
+                            toastStrId = R.string.track_status_no_human;
+                        }
                         invisible = false;
                     }
                 }
-            } else if (selectedTrackType == FURenderer.TRACK_TYPE_FACE) {
-                invisible = mFURenderer.queryFaceTrackStatus() > 0;
-                if (!invisible) {
+
+            } else if (trackType.face && trackType.gesture) {//人脸 + 手势
+                boolean hasFace = mFURenderer.queryFaceTrackStatus() > 0;
+                boolean gestureNum = mFURenderer.handProcessorGetNumResults() > 0;
+                if (!hasFace) {
+                    //没人脸
+                    if (!hasFace) {//没人脸
+                        invisible = false;
+                        toastStrId = R.string.track_status_no_face;
+                    }
+                } else {
+                    //有人脸
+                    if (!gestureNum) {
+                        //有人脸没手势
+                        invisible = false;
+                        toastStrId = R.string.track_status_no_gesture;
+                    }
+                }
+            } else if (trackType.face) {//人脸、
+                boolean hasFace = mFURenderer.queryFaceTrackStatus() > 0;
+                if (!hasFace) {//没人脸
+                    invisible = false;
                     toastStrId = R.string.track_status_no_face;
                 }
-            }
-        } else {
-            invisible = mFURenderer.queryFaceTrackStatus() > 0;
-            if (!invisible) {
-                toastStrId = R.string.track_status_no_face;
+            } else if (trackType.body >= 0) {//人体
+                boolean hasHuman = mFURenderer.queryHumanTrackStatus() > 0;
+                if (!hasHuman) {//无人体
+                    if (trackType.body == 0) {
+                        //全身
+                        toastStrId = R.string.track_status_no_human_full;
+                    } else {
+                        //半身
+                        toastStrId = R.string.track_status_no_human;
+                    }
+                    invisible = false;
+                }
+            } else if (trackType.gesture) {//手势
+                boolean gestureNum = mFURenderer.handProcessorGetNumResults() > 0;
+                if (!gestureNum) {//没手指
+                    invisible = false;
+                    toastStrId = R.string.track_status_no_gesture;
+                }
             }
         }
         final boolean visible = !invisible;
         final int strId = toastStrId;
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (visible) {
-                    mTvTrackStatus.setVisibility(View.VISIBLE);
-                    mTvTrackStatus.setText(strId);
-                } else {
-                    mTvTrackStatus.setVisibility(View.INVISIBLE);
-                }
+        runOnUiThread(() -> {
+            if (visible) {
+                mTvTrackStatus.setVisibility(View.VISIBLE);
+                mTvTrackStatus.setText(strId);
+            } else {
+                mTvTrackStatus.setVisibility(View.INVISIBLE);
             }
         });
     }
 
     protected void trackFace() {
+        //舌头检测
         if (mIsDetectTongue) {
             int type = mFURenderer.detectFaceTongue();
             int index = convertToTongueIndex(type, mIsFlipX);
@@ -323,6 +343,7 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
             }
         }
 
+        //表情
         if (mIsDetectExpression) {
             int[] expressionTypeResult = mDetectExpressionTypes;
             mFURenderer.detectFaceExpression(expressionTypeResult);
@@ -332,6 +353,7 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
             mLifecycleHandler.post(mUpdateExpressionRecyclerTask);
         }
 
+        //情绪
         if (mIsDetectEmotion) {
             int[] detectEmotionResult = mDetectEmotionResult;
             mFURenderer.detectFaceEmotion(detectEmotionResult);
@@ -476,10 +498,10 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         }
         int index = -1;
         if (mRecognitionType == RECOGNITION_TYPE_ACTION) {
-            int type = FURenderer.detectHumanAction();
+            int type = mFURenderer.detectHumanAction();
             index = type;
         } else if (mRecognitionType == RECOGNITION_TYPE_GESTURE) {
-            int type = FURenderer.detectHumanGesture();
+            int type = mFURenderer.detectHumanGesture();
             index = convertToGestureIndex(type);
         }
         if (mRecognitionIndex == index) {
@@ -578,6 +600,23 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         mIsDetectEmotion = visible;
     }
 
+    public void setNormalOrAvatarMode(TypeEnum typeEnum) {
+        this.mTypeEnum = typeEnum;
+        if (TypeEnum.EFFECT == typeEnum) {
+            mRecordBtn.setVisibility(View.VISIBLE);
+        } else {
+            mRecordBtn.setVisibility(View.GONE);
+            //展示dialog什么的
+            Dialog loadingDialog = createLoadingDialog();
+            loadingDialog.show();
+
+            mLifecycleHandler.postDelayed(() -> {
+                if (loadingDialog != null && loadingDialog.isShowing())
+                    loadingDialog.dismiss();
+            }, 500);
+        }
+    }
+
     public void setExpressionRecyclerVisibility(boolean visible) {
         int visibility = visible ? View.VISIBLE : View.GONE;
         mRvExpression.setVisibility(visibility);
@@ -613,7 +652,6 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
     }
 
     public void setRecognitionRecyclerVisibility(int resourceListType, boolean isSelected) {
-        mFURenderer.resetTrackStatus();
         if (isSelected) {
             mRecognitionType = resourceListType;
         } else {
@@ -665,39 +703,6 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         mViewMask.animate().alpha(alpha).setDuration(duration).start();
     }
 
-    public void setRenderMode(final int renderMode) {
-        final Dialog dialog = createLoadingDialog();
-        FURenderer.Callback callback = new FURenderer.Callback() {
-            @Override
-            public void onSuccess() {
-                onRenderModeChanged(renderMode);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        dialog.dismiss();
-                    }
-                });
-            }
-
-            @Override
-            public void onFailure() {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        dialog.dismiss();
-                        ToastUtil.makeText(BaseGlActivity.this, getResources().getString(R.string.toast_invalid_auth)).show();
-                    }
-                });
-            }
-        };
-        if (renderMode == FURenderer.RENDER_MODE_NORMAL) {
-            mFURenderer.destroyController(callback);
-        } else if (renderMode == FURenderer.RENDER_MODE_CONTROLLER) {
-            dialog.show();
-            mFURenderer.loadController(callback);
-        }
-    }
-
     public Dialog createLoadingDialog() {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_loading, null);
         Dialog dialog = new Dialog(this);
@@ -705,24 +710,10 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         dialog.setContentView(view, new ViewGroup.LayoutParams(
                 DensityUtils.dp2px(this, 110), DensityUtils.dp2px(this, 110)));
         dialog.getWindow().setBackgroundDrawable(null);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);//去掉白色背景
         return dialog;
     }
 
-    public FURenderer getFuRenderer() {
-        return mFURenderer;
-    }
-
-    public Effect getFaceLandmarksEffect() {
-        return mFaceLandmarksEffect;
-    }
-
-    public void nullFaceLandmarksEffect() {
-        mFaceLandmarksEffect = null;
-    }
-
-    public Effect getAiTypeEffect() {
-        return mAiTypeEffect;
-    }
 
     private static List<RecognitionListData> initGestureList() {
         List<RecognitionListData> gestureResourceList = new ArrayList<>(16);
@@ -921,7 +912,9 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
                             }
                         });
                         fragmentTransaction.add(R.id.fl_fragment_container, mConfigFragment, ConfigFragment.TAG);
+                        fragmentTransaction.hide(mConfigFragment);
                     } else {
+                        mConfigFragment.setTakeEffects();
                         fragmentTransaction.show(mConfigFragment);
                     }
                     fragmentTransaction.commit();
@@ -943,4 +936,38 @@ public abstract class BaseGlActivity extends AppCompatActivity implements PhotoT
         }
     }
 
+    //region 拍照
+    public PhotoRecordHelper mPhotoRecordHelper;
+    public volatile Boolean isTakePhoto = false;
+
+    /**
+     * 获取拍摄的照片
+     */
+    private final OnPhotoRecordingListener mOnPhotoRecordingListener = this::onReadBitmap;
+
+
+    protected void onReadBitmap(Bitmap bitmap) {
+        String path = FileUtils.addBitmapToAlbum(this, bitmap);
+        runOnUiThread(() -> {
+            if (path == null) {
+                ToastUtil.makeText(this, R.string.save_photo_failure).show();
+            } else {
+                ToastUtil.makeText(this, R.string.save_photo_success).show();
+                Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(path)));
+                sendBroadcast(intent);
+            }
+        });
+    }
+
+    /*录制保存*/
+    public void recordingPhoto(FURenderOutputData outputData, float[] texMatrix) {
+        if (outputData == null || outputData.getTexture() == null || outputData.getTexture().getTexId() <= 0) {
+            return;
+        }
+        if (isTakePhoto) {
+            isTakePhoto = false;
+            mPhotoRecordHelper.sendRecordingData(outputData.getTexture().getTexId(), texMatrix, GlUtil.IDENTITY_MATRIX, outputData.getTexture().getWidth(), outputData.getTexture().getHeight());
+        }
+    }
+    //endregion 拍照
 }
