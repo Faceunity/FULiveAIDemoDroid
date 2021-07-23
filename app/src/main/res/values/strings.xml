@@ -33,7 +33,7 @@
     <string name="debug_info">resolution:\n%dx%d\nfps: %d\nframe cost: %dms\nyaw: %.2f\npitch: %.2f\nroll: %.2f</string>
     <string name="track_status_no_human">未检测到人体</string>
     <string name="track_status_no_face">未检测到人脸</string>
-    <string name="track_status_no_human_full">未检测到全身，全身入境试试哦~</string>
+    <string name="track_status_no_human_full">未检测到全身，全身入镜试试哦~</string>
     <string name="track_status_no_gesture">未检测到手势</string>
     <string name="btn_reset">重置</string>
     <string name="btn_confirm">确定</string>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--For DiscreteSeekBar-->
+    <style name="Widget.DiscreteIndicatorTextAppearance" parent="android:TextAppearance.Small">
+        <item name="android:textColor">?android:attr/textColorPrimaryInverse</item>
+        <item name="android:padding">6dp</item>
+    </style>
+
+    <style name="SwitchCompat">
+        <item name="colorControlActivated">@color/main_color</item>
+        <item name="colorSwitchThumbNormal">#F1F1F1</item>
+        <item name="android:colorForeground">#FF2F2F2F</item>
+    </style>
+</resources>

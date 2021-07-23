@@ -7,40 +7,64 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.TextView;
 
+import androidx.annotation.Nullable;
+
+import com.faceunity.core.entity.FUCameraConfig;
+import com.faceunity.core.entity.FURenderFrameData;
+import com.faceunity.core.entity.FURenderInputData;
+import com.faceunity.core.entity.FURenderOutputData;
+import com.faceunity.core.enumeration.CameraFacingEnum;
+import com.faceunity.core.faceunity.FURenderKit;
+import com.faceunity.core.listener.OnGlRendererListener;
+import com.faceunity.core.media.video.OnVideoRecordingListener;
+import com.faceunity.core.media.video.VideoRecordHelper;
+import com.faceunity.core.renderer.CameraRenderer;
+import com.faceunity.core.utils.GlUtil;
 import com.faceunity.fuliveaidemo.R;
-import com.faceunity.fuliveaidemo.gles.core.GlUtil;
-import com.faceunity.fuliveaidemo.renderer.BaseCameraRenderer;
-import com.faceunity.fuliveaidemo.renderer.Camera1Renderer;
-import com.faceunity.fuliveaidemo.renderer.OnCameraRendererListener;
-import com.faceunity.fuliveaidemo.util.CameraUtils;
 import com.faceunity.fuliveaidemo.util.DecimalUtils;
-import com.faceunity.fuliveaidemo.util.LifeCycleSensorManager;
+import com.faceunity.fuliveaidemo.util.FileUtils;
 import com.faceunity.fuliveaidemo.util.ToastUtil;
-import com.faceunity.fuliveaidemo.util.VideoRecorder;
 import com.faceunity.fuliveaidemo.view.RecordButton;
 import com.faceunity.nama.FURenderer;
+import com.faceunity.nama.view.listener.TypeEnum;
 
 import java.io.File;
 
 /**
  * @author Richie on 2020.05.21
  */
-public class CameraActivity extends BaseGlActivity implements OnCameraRendererListener, RecordButton.OnRecordListener,
-        FURenderer.OnDebugListener, LifeCycleSensorManager.OnAccelerometerChangedListener, VideoRecorder.OnVideoRecordListener {
-    private BaseCameraRenderer mCameraRenderer;
-    private RecordButton mRecordBtn;
+public class CameraActivity extends BaseGlActivity implements RecordButton.OnRecordListener,
+        FURenderer.OnDebugListener, OnGlRendererListener {
+    private CameraRenderer mCameraRenderer;
     private TextView mTvDebugInfo;
-    private VideoRecorder mVideoRecorder;
+    private FUCameraConfig mFuCameraConfig;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mVideoRecordHelper = new VideoRecordHelper(this, mOnVideoRecordingListener);
+    }
 
-        LifeCycleSensorManager lifeCycleSensorManager = new LifeCycleSensorManager(this, getLifecycle());
-        lifeCycleSensorManager.setOnAccelerometerChangedListener(this);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mCameraRenderer.onResume();
+    }
 
-        mVideoRecorder = new VideoRecorder(mGlSurfaceView);
-        mVideoRecorder.setOnVideoRecordListener(this);
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mCameraRenderer.onPause();
+        if (isRecording) {
+            isRecording = false;
+            onStopRecord();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        mCameraRenderer.onDestroy();
+        super.onDestroy();
     }
 
     @Override
@@ -52,38 +76,23 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
     @Override
     protected void initView() {
         findViewById(R.id.iv_save_photo).setVisibility(View.GONE);
-        mRecordBtn = findViewById(R.id.btn_record_video);
         mRecordBtn.setOnRecordListener(this);
         mTvDebugInfo = findViewById(R.id.tv_debug_info);
         mTvDebugInfo.setVisibility(View.VISIBLE);
         mTvDebugInfo.setTag(false);
         findViewById(R.id.iv_debug).setOnClickListener(mViewClickListener);
         findViewById(R.id.iv_switch_cam).setOnClickListener(mViewClickListener);
-        mPhotoTaker.setFlipY(true);
     }
 
     @Override
     protected void initFuRenderer() {
-        mFURenderer = new FURenderer.Builder(this)
-                .setCameraFacing(mCameraRenderer.getCameraFacing())
-                .setInputTextureType(FURenderer.INPUT_TEXTURE_EXTERNAL_OES)
-                .setInputImageOrientation(CameraUtils.getCameraOrientation(mCameraRenderer.getCameraFacing()))
-                .setOnSystemErrorListener(this)
-                .setRunBenchmark(true)
-                .setOnDebugListener(this)
-                .build();
+        mFURenderer = FURenderer.getInstance();
     }
 
     @Override
     protected void initGlRenderer() {
-        mCameraRenderer = new Camera1Renderer(getLifecycle(), this, mGlSurfaceView, this);
-        mIsFlipX = mCameraRenderer.getCameraFacing() == FURenderer.CAMERA_FACING_FRONT;
-    }
-
-    @Override
-    public void onSurfaceCreated() {
-        super.onSurfaceCreated();
-        mCameraRenderer.setRenderRotatedImage(false);
+        mFuCameraConfig = new FUCameraConfig();
+        mCameraRenderer = new CameraRenderer(mGlSurfaceView, mFuCameraConfig, this);
     }
 
     @Override
@@ -92,47 +101,10 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
     }
 
     @Override
-    public int onDrawFrame(byte[] cameraNv21Byte, int cameraTexId, int cameraWidth, int cameraHeight, float[] mvpMatrix, float[] texMatrix, long timeStamp) {
-        int fuTexId = mFURenderer.drawFrame(cameraNv21Byte, cameraTexId, cameraWidth, cameraHeight);
-        trackFace();
-        trackHuman();
-        queryTrackStatus();
-        mPhotoTaker.send(fuTexId, GlUtil.IDENTITY_MATRIX, texMatrix, cameraHeight, cameraWidth);
-        mVideoRecorder.send(fuTexId, GlUtil.IDENTITY_MATRIX, texMatrix, timeStamp);
-        return fuTexId;
-    }
-
-    @Override
     protected void onRenderModeChanged(int renderMode) {
         super.onRenderModeChanged(renderMode);
         final boolean renderController = renderMode == FURenderer.RENDER_MODE_CONTROLLER;
-        mCameraRenderer.setRenderRotatedImage(renderController);
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mRecordBtn.setVisibility(renderController ? View.INVISIBLE : View.VISIBLE);
-            }
-        });
-    }
-
-    @Override
-    public void onCameraChanged(int cameraFacing, int cameraOrientation) {
-        mIsFlipX = cameraFacing == FURenderer.CAMERA_FACING_FRONT;
-        mFURenderer.onCameraChanged(cameraFacing, cameraOrientation);
-    }
-
-    @Override
-    public void onCameraOpened(int cameraWidth, int cameraHeight) {
-    }
-
-    @Override
-    public void onCameraError(final String message) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                ToastUtil.makeText(CameraActivity.this, message);
-            }
-        });
+        runOnUiThread(() -> mRecordBtn.setVisibility(renderController ? View.INVISIBLE : View.VISIBLE));
     }
 
     @Override
@@ -140,104 +112,60 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
         final float[] faceRotationEuler = mFURenderer.getFaceRotationEuler();
         boolean isShow = (boolean) mTvDebugInfo.getTag();
         if (!isShow) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    boolean isAllZero = true;
-                    for (float v : faceRotationEuler) {
-                        if (!DecimalUtils.floatEquals(v, 0f)) {
-                            isAllZero = false;
-                            break;
-                        }
+            runOnUiThread(() -> {
+                boolean isAllZero = true;
+                for (float v : faceRotationEuler) {
+                    if (!DecimalUtils.floatEquals(v, 0f)) {
+                        isAllZero = false;
+                        break;
                     }
-                    String upperText = "resolution:\n" + mCameraRenderer.getCameraWidth() + "x" + mCameraRenderer.getCameraHeight()
-                            + "\nfps: " + (int) fps + "\nframe cost: " + (int) renderTime + "ms\n";
-                    String lowerText;
-                    if (isAllZero) {
-                        lowerText = "yaw: null\npitch: null\nroll: null";
-                    } else {
-                        boolean isFront = mCameraRenderer.getCameraFacing() == BaseCameraRenderer.FACE_FRONT;
-                        float yaw = isFront ? -faceRotationEuler[1] : faceRotationEuler[1];
-                        float pitch = faceRotationEuler[0];
-                        float roll = isFront ? -faceRotationEuler[2] : faceRotationEuler[2];
-                        lowerText = String.format("yaw: %.2f°\npitch: %.2f°\nroll: %.2f°", yaw, pitch, roll);
-                    }
-                    mTvDebugInfo.setText(upperText.concat(lowerText));
                 }
+                String upperText = "resolution:\n" + mFuCameraConfig.cameraWidth + "x" + mFuCameraConfig.cameraHeight
+                        + "\nfps: " + (int) fps + "\nframe cost: " + (int) renderTime + "ms\n";
+                String lowerText;
+                if (isAllZero || mTypeEnum == TypeEnum.AVATAR) {
+                    lowerText = "yaw: null\npitch: null\nroll: null";
+                } else {
+                    boolean isFront = mFuCameraConfig.cameraFacing == CameraFacingEnum.CAMERA_FRONT;
+                    float yaw = isFront ? -faceRotationEuler[1] : faceRotationEuler[1];
+                    float pitch = faceRotationEuler[0];
+                    float roll = isFront ? -faceRotationEuler[2] : faceRotationEuler[2];
+                    lowerText = String.format("yaw: %.2f°\npitch: %.2f°\nroll: %.2f°", yaw, pitch, roll);
+                }
+                mTvDebugInfo.setText(upperText.concat(lowerText));
             });
         }
     }
 
     @Override
     public void takePicture() {
-        mPhotoTaker.mark();
+        isTakePhoto = true;
     }
 
     @Override
     public void startRecord() {
-        int videoWidth = BaseCameraRenderer.DEFAULT_PREVIEW_HEIGHT;
-        int videoHeight = BaseCameraRenderer.DEFAULT_PREVIEW_WIDTH;
-        mVideoRecorder.start(videoWidth, videoHeight);
-    }
-
-    @Override
-    public void stopRecord() {
-        mVideoRecorder.stop();
-    }
-
-    @Override
-    public void onAccelerometerChanged(float x, float y, float z) {
-        if (Math.abs(x) > 3 || Math.abs(y) > 3) {
-            if (Math.abs(x) > Math.abs(y)) {
-                mFURenderer.onDeviceOrientationChanged(x > 0 ? 0 : 180);
-            } else {
-                mFURenderer.onDeviceOrientationChanged(y > 0 ? 90 : 270);
-            }
+        if (!isRecording) {
+            isRecording = true;
+            onStartRecord();
         }
     }
 
     @Override
-    public void onPrepare() {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mRecordBtn.setSecond(0);
-            }
-        });
+    public void stopRecord() {
+        if (isRecording) {
+            isRecording = false;
+            onStopRecord();
+        }
     }
 
     @Override
-    public void onStop(final boolean valid) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mRecordBtn.setSecond(0);
-                if (!valid) {
-                    ToastUtil.makeText(CameraActivity.this, R.string.save_video_too_short).show();
-                }
-            }
-        });
-    }
-
-    @Override
-    public void onProgress(final long progress) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mRecordBtn.setSecond(progress);
-            }
-        });
-    }
-
-    @Override
-    public void onFinish(final String path) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(path))));
-                ToastUtil.makeText(CameraActivity.this, R.string.save_video_success).show();
-            }
-        });
+    public void setNormalOrAvatarMode(TypeEnum mode) {
+        super.setNormalOrAvatarMode(mode);
+        if (mode == TypeEnum.AVATAR) {
+            mCameraRenderer.drawSmallViewport(true);
+        } else {
+            mCameraRenderer.drawSmallViewport(false);
+        }
     }
 
     @Override
@@ -258,4 +186,103 @@ public class CameraActivity extends BaseGlActivity implements OnCameraRendererLi
         }
     }
 
+    @Override
+    public void onDrawFrameAfter() {
+
+    }
+
+    @Override
+    public void onRenderAfter(FURenderOutputData fuRenderOutputData, FURenderFrameData fuRenderFrameData) {
+        mFURenderer.benchmarkFPS(this);
+        trackFace();
+        trackHuman();
+        queryTrackStatus();
+        recordingPhoto(fuRenderOutputData, fuRenderFrameData.getTexMatrix());
+        recordingVideo(fuRenderOutputData, fuRenderFrameData.getTexMatrix());
+    }
+
+    @Override
+    public void onRenderBefore(@Nullable FURenderInputData fuRenderInputData) {
+        mFURenderer.setCallStartTime(System.nanoTime());
+    }
+
+    @Override
+    public void onSurfaceChanged(int i, int i1) {
+
+    }
+
+    @Override
+    public void onSurfaceCreated() {
+
+    }
+
+    @Override
+    public void onSurfaceDestroy() {
+        FURenderKit.getInstance().release();
+    }
+
+    //region 视频录制
+    private VideoRecordHelper mVideoRecordHelper;
+    private volatile boolean isRecordingPrepared = false;
+    private boolean isRecording = false;
+    private volatile long recordTime = 0;
+
+    protected void onStartRecord() {
+        mVideoRecordHelper.startRecording(mGlSurfaceView, mCameraRenderer.getFUCamera().getCameraHeight(), mCameraRenderer.getFUCamera().getCameraWidth());
+    }
+
+    protected void onStopRecord() {
+        mRecordBtn.setSecond(0);
+        mVideoRecordHelper.stopRecording();
+    }
+
+    private OnVideoRecordingListener mOnVideoRecordingListener = new OnVideoRecordingListener() {
+
+        @Override
+        public void onPrepared() {
+            isRecordingPrepared = true;
+        }
+
+        @Override
+        public void onProcess(Long time) {
+            recordTime = time;
+            runOnUiThread(() -> {
+                if (isRecording) {
+                    mRecordBtn.setSecond(time);
+                }
+            });
+
+        }
+
+        @Override
+        public void onFinish(File file) {
+            isRecordingPrepared = false;
+
+            if (recordTime < 1100) {
+                runOnUiThread(() -> ToastUtil.makeText(CameraActivity.this, R.string.save_video_too_short).show());
+            } else {
+                String filePath = FileUtils.addVideoToAlbum(CameraActivity.this, file);
+                if (filePath == null || filePath.trim().length() == 0) {
+                    runOnUiThread(() -> ToastUtil.makeText(CameraActivity.this, R.string.save_video_failure).show());
+                } else {
+                    sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
+                    runOnUiThread(() -> ToastUtil.makeText(CameraActivity.this, R.string.save_video_success).show());
+                }
+            }
+            if (file.exists()) {
+                file.delete();
+            }
+        }
+
+    };
+
+    private void recordingVideo(FURenderOutputData outputData, float[] texMatrix) {
+        if (outputData == null || outputData.getTexture() == null || outputData.getTexture().getTexId() <= 0) {
+            return;
+        }
+        if (isRecordingPrepared) {
+            mVideoRecordHelper.frameAvailableSoon(outputData.getTexture().getTexId(), texMatrix, GlUtil.IDENTITY_MATRIX);
+        }
+    }
+    //endregion 视频录制
 }

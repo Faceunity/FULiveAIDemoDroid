@@ -9,19 +9,24 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 
+import com.faceunity.core.entity.FURenderFrameData;
+import com.faceunity.core.entity.FURenderInputData;
+import com.faceunity.core.entity.FURenderOutputData;
+import com.faceunity.core.faceunity.FURenderKit;
+import com.faceunity.core.listener.OnGlRendererListener;
+import com.faceunity.core.media.video.OnVideoRecordingListener;
+import com.faceunity.core.media.video.VideoRecordHelper;
+import com.faceunity.core.renderer.VideoRenderer;
 import com.faceunity.fuliveaidemo.R;
-import com.faceunity.fuliveaidemo.gles.core.GlUtil;
-import com.faceunity.fuliveaidemo.renderer.VideoRenderer;
-import com.faceunity.fuliveaidemo.util.VideoRecorder;
 import com.faceunity.nama.FURenderer;
+ 
 
 import java.io.File;
 
-public class VideoActivity extends BaseGlActivity implements VideoRenderer.OnRendererStatusListener, VideoRecorder.OnVideoRecordListener {
+public class VideoActivity extends BaseGlActivity implements OnGlRendererListener,OnVideoRecordingListener {
     public static String VIDEO_PATH = "video_path";
-
+    private VideoRecordHelper videoRecordHelper;
     private VideoRenderer mVideoRenderer;
-    private VideoRecorder mVideoRecorder;
 
     public static void start(Activity context, String videoPath) {
         Intent intent = new Intent(context, VideoActivity.class);
@@ -32,17 +37,25 @@ public class VideoActivity extends BaseGlActivity implements VideoRenderer.OnRen
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mVideoRecorder = new VideoRecorder(mGlSurfaceView);
-        mVideoRecorder.setOnVideoRecordListener(this);
-        mVideoRenderer.setOnMediaEventListener(new VideoRenderer.OnMediaEventListener() {
-            @Override
-            public void onCompletion() {
-                mVideoRecorder.stop();
-            }
+        videoRecordHelper = new VideoRecordHelper(this, this);
+    }
 
-            @Override
-            public void onLoadError(String error) {}
-        });
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mVideoRenderer.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mVideoRenderer.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mVideoRenderer.onDestroy();
     }
 
     @Override
@@ -52,25 +65,21 @@ public class VideoActivity extends BaseGlActivity implements VideoRenderer.OnRen
         findViewById(R.id.iv_debug).setVisibility(View.GONE);
         findViewById(R.id.iv_save_photo).setVisibility(View.GONE);
         mGlSurfaceView.setOnClickListener(v -> {
-            if (null != mVideoRenderer) {
-                mVideoRenderer.startMediaPlayer();
-                mVideoRecorder.start(mVideoRenderer.getVideoWidth(), mVideoRenderer.getVideoHeight());
+            if (null != videoRecordHelper) {
+                videoRecordHelper.startRecording(mGlSurfaceView,480,640);
             }
         });
     }
 
     @Override
     protected void initFuRenderer() {
-        mFURenderer = new FURenderer.Builder(this)
-                .setInputTextureType(FURenderer.INPUT_TEXTURE_EXTERNAL_OES)
-                .setOnSystemErrorListener(this)
-                .build();
+        mFURenderer = FURenderer.getInstance();
     }
 
     @Override
     protected void initGlRenderer() {
         String videoPath = getIntent().getStringExtra(VIDEO_PATH);
-        mVideoRenderer = new VideoRenderer(getLifecycle(), videoPath, mGlSurfaceView, this);
+        mVideoRenderer = new VideoRenderer(mGlSurfaceView, videoPath,this);
     }
 
     @Override
@@ -79,44 +88,56 @@ public class VideoActivity extends BaseGlActivity implements VideoRenderer.OnRen
     }
 
     @Override
-    public void onSurfaceChanged(int viewWidth, int viewHeight, int videoWidth, int videoHeight, int videoRotation, boolean isSystemCameraRecord) {
+    public void onDrawFrameAfter() {
 
     }
 
     @Override
-    public int onDrawFrame(int videoTextureId, int videoWidth, int videoHeight, float[] mvpMatrix, long timeStamp) {
-        int fuTexId = mFURenderer.onDrawFrameSingleInput(videoTextureId, videoWidth, videoHeight);
+    public void onRenderAfter( FURenderOutputData fuRenderOutputData,  FURenderFrameData fuRenderFrameData) {
         trackFace();
         trackHuman();
         queryTrackStatus();
-        mPhotoTaker.send(fuTexId, GlUtil.IDENTITY_MATRIX, VideoRenderer.mTexMatrix, videoWidth, videoHeight);
-        mVideoRecorder.send(fuTexId, GlUtil.IDENTITY_MATRIX, VideoRenderer.mTexMatrix, timeStamp);
-        return fuTexId;
+        recordingPhoto(fuRenderOutputData,fuRenderFrameData.getTexMatrix());
     }
 
     @Override
-    public void onPrepare() {
-
-    }
-
-    @Override
-    public void onStop(boolean valid) {
+    public void onRenderBefore( FURenderInputData fuRenderInputData) {
 
     }
 
     @Override
-    public void onProgress(long progress) {
+    public void onPrepared() {
 
     }
 
     @Override
-    public void onFinish(String path) {
+    public void onProcess(Long time) {
+
+    }
+
+    @Override
+    public void onFinish(File file) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(path))));
-                Toast.makeText(VideoActivity.this, path, Toast.LENGTH_LONG).show();
+                sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
+                Toast.makeText(VideoActivity.this, file.getPath(), Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    @Override
+    public void onSurfaceChanged(int i, int i1) {
+
+    }
+
+    @Override
+    public void onSurfaceCreated() {
+
+    }
+
+    @Override
+    public void onSurfaceDestroy() {
+        FURenderKit.getInstance().release();
     }
 }
