@@ -114,10 +114,10 @@
     </androidx.cardview.widget.CardView>
 
     <androidx.cardview.widget.CardView
-        android:visibility="gone"
         android:id="@+id/cv_video"
         android:layout_width="343dp"
         android:layout_height="76dp"
+        android:visibility="gone"
         android:layout_marginTop="30dp"
         android:background="@color/main_page_card_bg"
         app:cardBackgroundColor="@color/main_page_card_bg"
