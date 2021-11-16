@@ -9,6 +9,7 @@
     <string name="save_video_success">保存视频成功！</string>
     <string name="save_video_failure">保存视频失败！</string>
     <string name="save_video_too_short">视频太短啦！</string>
+    <string name="save_video_wait">视频处理中请稍等</string>
     <string name="image_not_exist">所选图片文件不存在</string>
     <string name="wrong_image_format">请选择图片文件</string>
     <string name="config_main_title">人体 AI 技术</string>

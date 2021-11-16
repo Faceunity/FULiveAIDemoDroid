@@ -7,12 +7,15 @@ import android.view.View;
 import com.faceunity.core.entity.FURenderFrameData;
 import com.faceunity.core.entity.FURenderInputData;
 import com.faceunity.core.entity.FURenderOutputData;
+import com.faceunity.core.enumeration.FUFaceProcessorDetectModeEnum;
+import com.faceunity.core.faceunity.FUAIKit;
 import com.faceunity.core.faceunity.FURenderKit;
 import com.faceunity.core.listener.OnGlRendererListener;
 import com.faceunity.core.renderer.PhotoRenderer;
 import com.faceunity.fuliveaidemo.R;
 import com.faceunity.nama.FURenderer;
 import com.faceunity.nama.utils.LogUtils;
+import com.faceunity.nama.view.listener.TypeEnum;
 
 /**
  * @author Richie on 2020.05.21
@@ -50,10 +53,15 @@ public class PhotoActivity extends BaseGlActivity implements OnGlRendererListene
     @Override
     protected void initView() {
         findViewById(R.id.iv_switch_cam).setVisibility(View.GONE);
-        findViewById(R.id.btn_record_video).setVisibility(View.GONE);
         findViewById(R.id.iv_debug).setVisibility(View.GONE);
         mIvSavePhoto = findViewById(R.id.iv_save_photo);
         mIvSavePhoto.setOnClickListener(mViewClickListener);
+    }
+
+    @Override
+    public void setNormalOrAvatarMode(TypeEnum typeEnum) {
+        super.setNormalOrAvatarMode(typeEnum);
+        mRecordBtn.setVisibility(View.GONE);
     }
 
     @Override
@@ -101,7 +109,7 @@ public class PhotoActivity extends BaseGlActivity implements OnGlRendererListene
 
     @Override
     public void onRenderBefore(FURenderInputData fuRenderInputData) {
-
+        FUAIKit.getInstance().humanProcessorReset();
     }
 
     @Override
@@ -111,11 +119,12 @@ public class PhotoActivity extends BaseGlActivity implements OnGlRendererListene
 
     @Override
     public void onSurfaceCreated() {
-
+        FUAIKit.getInstance().faceProcessorSetDetectMode(FUFaceProcessorDetectModeEnum.IMAGE);
     }
 
     @Override
     public void onSurfaceDestroy() {
+        FUAIKit.getInstance().faceProcessorSetDetectMode(FUFaceProcessorDetectModeEnum.VIDEO);
         FURenderKit.getInstance().release();
     }
 }

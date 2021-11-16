@@ -228,12 +228,13 @@ public class EffectControllerView extends LinearLayout implements ChoiceEffectOr
 
         if (TypeEnum.AVATAR == typeEnum && skeleton != null && Effect.TYPE_HUMAN_FULL_OR_HALF == skeleton.getType()) {
             //启动avatar
+            mEffectFactory.removeAllProps();
+            mEffectFactory.getEffectSpeDataFactory().getAvatarDataFactory().isHumanTrackSceneFull = skeleton.getAuthCode() == Effect.MODULE_CODE_HUMAN_SKELETON_FULL;
             mEffectFactory.getEffectSpeDataFactory().getAvatarDataFactory().bindCurrentRenderer();
-            //设置当前的类型
-            mEffectFactory.getEffectSpeDataFactory().getAvatarDataFactory().setHumanTrackSceneFull(skeleton.getAuthCode() == Effect.MODULE_CODE_HUMAN_SKELETON_FULL);
         } else {
             //移除这个效果
             mEffectFactory.getEffectSpeDataFactory().getAvatarDataFactory().removeScene();
+            mEffectFactory.getEffectSpeDataFactory().getAvatarDataFactory().release();
             //渲染所有选中的效果
             mEffectFactory.replaceProps(mEffectFactory.getTakeEffects());
         }

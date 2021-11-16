@@ -45,10 +45,12 @@ public class EffectFactory {
     }
 
     public void bindCurrentRenderer() {
-        mEffectGestureSingleDataFactory.bindCurrentRenderer();
-        mEffectSegmentationSingleDataFactory.bindCurrentRenderer();
-        mEffectActionSingleDataFactory.bindCurrentRenderer();
-        mEffectFaceMultiDataFactory.bindCurrentRenderer();
+        if (mTypeEnum == TypeEnum.EFFECT) {
+            mEffectGestureSingleDataFactory.bindCurrentRenderer();
+            mEffectSegmentationSingleDataFactory.bindCurrentRenderer();
+            mEffectActionSingleDataFactory.bindCurrentRenderer();
+            mEffectFaceMultiDataFactory.bindCurrentRenderer();
+        }
         mEffectBodySpeDataFactory.bindCurrentRenderer(mTypeEnum);
     }
 
@@ -133,5 +135,9 @@ public class EffectFactory {
         mEffectActionSingleDataFactory.replaceProp(actionEffect);
         mEffectFaceMultiDataFactory.replaceProps(faceEffects);
         mEffectBodySpeDataFactory.replaceProp(bodyEffect);
+    }
+
+    public void removeAllProps() {
+        mFURenderKit.getPropContainer().removeAllProp();
     }
 }
