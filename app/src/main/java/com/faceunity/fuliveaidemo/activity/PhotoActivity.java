@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.view.View;
 
+import com.faceunity.FUConfig;
 import com.faceunity.core.entity.FURenderFrameData;
 import com.faceunity.core.entity.FURenderInputData;
 import com.faceunity.core.entity.FURenderOutputData;
@@ -14,6 +15,7 @@ import com.faceunity.core.listener.OnGlRendererListener;
 import com.faceunity.core.renderer.PhotoRenderer;
 import com.faceunity.fuliveaidemo.R;
 import com.faceunity.nama.FURenderer;
+import com.faceunity.nama.utils.FuDeviceUtils;
 import com.faceunity.nama.utils.LogUtils;
 import com.faceunity.nama.view.listener.TypeEnum;
 
@@ -119,7 +121,12 @@ public class PhotoActivity extends BaseGlActivity implements OnGlRendererListene
 
     @Override
     public void onSurfaceCreated() {
+        FUAIKit.getInstance().setMaxFaces(FUConfig.FU_MAX_FACE);
         FUAIKit.getInstance().faceProcessorSetDetectMode(FUFaceProcessorDetectModeEnum.IMAGE);
+        FUAIKit.getInstance().faceProcessorSetFaceLandmarkQuality(FUConfig.DEVICE_LEVEL);
+        //高端机开启小脸检测
+        if (FUConfig.DEVICE_LEVEL  > FuDeviceUtils.DEVICE_LEVEL_MID)
+            FUAIKit.getInstance().fuFaceProcessorSetDetectSmallFace(true);
     }
 
     @Override
