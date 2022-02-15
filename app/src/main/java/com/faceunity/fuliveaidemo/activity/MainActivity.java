@@ -13,6 +13,7 @@ import android.view.ViewConfiguration;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.faceunity.FUConfig;
 import com.faceunity.fuliveaidemo.R;
 import com.faceunity.fuliveaidemo.util.FileUtils;
 import com.faceunity.fuliveaidemo.util.PermissionUtil;
@@ -20,6 +21,7 @@ import com.faceunity.fuliveaidemo.util.ScreenUtils;
 import com.faceunity.fuliveaidemo.util.ToastUtil;
 import com.faceunity.fuliveaidemo.util.UriUtil;
 import com.faceunity.fuliveaidemo.view.OnMultiClickListener;
+import com.faceunity.nama.utils.FuDeviceUtils;
 import com.faceunity.nama.utils.LogUtils;
 
 import java.io.File;
@@ -45,6 +47,8 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.cv_photo).setOnTouchListener(viewTouchListener);
         findViewById(R.id.cv_camera).setOnTouchListener(viewTouchListener);
         findViewById(R.id.cv_video).setOnTouchListener(viewTouchListener);
+
+        FUConfig.DEVICE_LEVEL = FuDeviceUtils.judgeDeviceLevel(this);
     }
 
     private class ViewTouchListener implements View.OnTouchListener {

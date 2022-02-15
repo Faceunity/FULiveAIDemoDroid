@@ -6,9 +6,11 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -705,12 +707,19 @@ public abstract class BaseGlActivity extends AppCompatActivity implements OnPhot
 
     public Dialog createLoadingDialog() {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_loading, null);
-        Dialog dialog = new Dialog(this);
+        Dialog dialog = new Dialog(this,R.style.loading_dialog);
         dialog.setCancelable(false);
+        dialog.setCanceledOnTouchOutside(false);
         dialog.setContentView(view, new ViewGroup.LayoutParams(
                 DensityUtils.dp2px(this, 110), DensityUtils.dp2px(this, 110)));
         dialog.getWindow().setBackgroundDrawable(null);
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);//去掉白色背景
+        WindowManager.LayoutParams attr = dialog.getWindow().getAttributes();
+        if (attr != null) {
+            attr.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            attr.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            attr.gravity = Gravity.CENTER;//设置dialog 在布局中的位置
+        }
         return dialog;
     }
 

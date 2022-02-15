@@ -13,8 +13,6 @@ import androidx.fragment.app.FragmentTransaction;
 
 import com.faceunity.fuliveaidemo.R;
 import com.faceunity.fuliveaidemo.activity.BaseGlActivity;
-import com.faceunity.nama.Effect;
-import com.faceunity.nama.factory.EffectDataFactory;
 import com.faceunity.nama.factory.EffectFactory;
 import com.faceunity.nama.view.EffectControllerView;
 import com.faceunity.nama.view.bean.TrackType;
