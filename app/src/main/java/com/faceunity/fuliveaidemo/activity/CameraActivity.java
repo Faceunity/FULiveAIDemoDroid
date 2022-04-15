@@ -206,6 +206,8 @@ public class CameraActivity extends BaseGlActivity implements RecordButton.OnRec
 
     @Override
     public void onRenderBefore(@Nullable FURenderInputData fuRenderInputData) {
+        fuRenderInputData.setImageBuffer(null);
+        fuRenderInputData.getRenderConfig().setNeedBufferReturn(false);
         mFURenderer.setCallStartTime(System.nanoTime());
     }
 

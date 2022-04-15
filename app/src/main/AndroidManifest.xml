@@ -17,7 +17,7 @@
         android:name=".FUApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="${appName}"
+        android:label="@string/app_name"
         android:maxAspectRatio="2.4"
         android:largeHeap="true"
         android:resizeableActivity="false"
