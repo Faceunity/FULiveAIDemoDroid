@@ -47,8 +47,6 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.cv_photo).setOnTouchListener(viewTouchListener);
         findViewById(R.id.cv_camera).setOnTouchListener(viewTouchListener);
         findViewById(R.id.cv_video).setOnTouchListener(viewTouchListener);
-
-        FUConfig.DEVICE_LEVEL = FuDeviceUtils.judgeDeviceLevel(this);
     }
 
     private class ViewTouchListener implements View.OnTouchListener {
