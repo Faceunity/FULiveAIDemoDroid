@@ -9,6 +9,7 @@ import com.faceunity.core.entity.FURenderFrameData;
 import com.faceunity.core.entity.FURenderInputData;
 import com.faceunity.core.entity.FURenderOutputData;
 import com.faceunity.core.enumeration.FUFaceProcessorDetectModeEnum;
+import com.faceunity.core.enumeration.FUHumanProcessorDetectModeEnum;
 import com.faceunity.core.faceunity.FUAIKit;
 import com.faceunity.core.faceunity.FURenderKit;
 import com.faceunity.core.listener.OnGlRendererListener;
@@ -123,6 +124,7 @@ public class PhotoActivity extends BaseGlActivity implements OnGlRendererListene
     public void onSurfaceCreated() {
         FUAIKit.getInstance().setMaxFaces(FUConfig.FU_MAX_FACE);
         FUAIKit.getInstance().faceProcessorSetDetectMode(FUFaceProcessorDetectModeEnum.IMAGE);
+        FUAIKit.getInstance().setHumanProcessorDetectMode(FUHumanProcessorDetectModeEnum.IMAGE);
         FUAIKit.getInstance().faceProcessorSetFaceLandmarkQuality(FUConfig.DEVICE_LEVEL);
         //高端机开启小脸检测
         if (FUConfig.DEVICE_LEVEL  > FuDeviceUtils.DEVICE_LEVEL_MID)
@@ -132,6 +134,7 @@ public class PhotoActivity extends BaseGlActivity implements OnGlRendererListene
     @Override
     public void onSurfaceDestroy() {
         FUAIKit.getInstance().faceProcessorSetDetectMode(FUFaceProcessorDetectModeEnum.VIDEO);
+        FUAIKit.getInstance().setHumanProcessorDetectMode(FUHumanProcessorDetectModeEnum.VIDEO);
         FURenderKit.getInstance().release();
     }
 }

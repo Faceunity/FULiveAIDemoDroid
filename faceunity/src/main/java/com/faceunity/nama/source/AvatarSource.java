@@ -59,23 +59,6 @@ public class AvatarSource {
         String animDir = "pta/gesture/";
         ArrayList<FUAnimationData> animations = new ArrayList();
         animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_idle.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_eight.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_fist.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_greet.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_gun.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_heart.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_hold.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_korheart.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_merge.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_ok.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_one.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_palm.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_rock.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_six.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_thumb.bundle")));
-        animations.add(new FUAnimationData(new FUBundleData(animDir + "anim_two.bundle")));
         return animations;
     }
-
-
 }
