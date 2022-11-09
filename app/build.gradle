@@ -6,6 +6,14 @@ def appName = 'FULiveDemo'
 def renameApk = false
 
 android {
+    signingConfigs {
+        release {
+            keyAlias 'fulive'
+            keyPassword '120266Xiangxin!'
+            storeFile file('../FULive.jks')
+            storePassword '120266Xiangxin!'
+        }
+    }
     compileSdkVersion rootProject.ext.compileSdkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
     defaultConfig {
@@ -30,11 +38,18 @@ android {
         }
     }
     buildTypes {
-        release {
-            minifyEnabled true
-            zipAlignEnabled true
-            shrinkResources true
+        debug {
+            debuggable true
+            minifyEnabled false //是否混淆
+            shrinkResources false //是否去除无效的资源文件
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        release {
+            debuggable false
+            minifyEnabled true //是否混淆
+            shrinkResources true //是否去除无效的资源文件
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     compileOptions {
