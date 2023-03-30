@@ -5,6 +5,7 @@ import android.content.Context;
 import com.faceunity.FUConfig;
 import com.faceunity.core.callback.OperateCallback;
 import com.faceunity.core.enumeration.FUAITypeEnum;
+import com.faceunity.core.enumeration.FUPortraitSegmentationEnum;
 import com.faceunity.core.faceunity.FUAIKit;
 import com.faceunity.core.faceunity.FURenderConfig;
 import com.faceunity.core.faceunity.FURenderKit;
@@ -67,8 +68,7 @@ public final class FURenderer {
     private String BUNDLE_AI_FACE = "model" + File.separator + "ai_face_processor.bundle";
     // 人体
     private String BUNDLE_AI_HUMAN = "model" + File.separator + "ai_human_processor.bundle";
-    // 人体
-    public static String BUNDLE_AI_HUMAN_GPU = "model" + File.separator + "ai_human_processor_gpu.bundle";
+    //手
     private String BUNDLE_AI_HAND = "model" + File.separator + "ai_hand_processor.bundle";
     /* AI道具舌头*/
     private String BUNDLE_TONGUE = "graphics" + File.separator + "tongue.bundle";
@@ -102,11 +102,8 @@ public final class FURenderer {
             public void onSuccess(int i, String s) {
                 if (i == FURenderConfig.OPERATE_SUCCESS_AUTH) {
                     mFUAKit.loadAIProcessor(BUNDLE_AI_FACE, FUAITypeEnum.FUAITYPE_FACEPROCESSOR);//人脸识别
-                    if (FUConfig.DEVICE_LEVEL  > FuDeviceUtils.DEVICE_LEVEL_MID) {
-                        mFUAKit.loadAIProcessor(BUNDLE_AI_HUMAN_GPU, FUAITypeEnum.FUAITYPE_HUMAN_PROCESSOR);//人体识别
-                    } else {
-                        mFUAKit.loadAIProcessor(BUNDLE_AI_HUMAN, FUAITypeEnum.FUAITYPE_HUMAN_PROCESSOR);//人体识别
-                    }
+                    mFUAKit.fuSetHumanSegMode(FUConfig.DEVICE_LEVEL  > FuDeviceUtils.DEVICE_LEVEL_MID ? FUPortraitSegmentationEnum.MODE_SEG_GPU_COMMON : FUPortraitSegmentationEnum.MODE_SEG_CPU_COMMON);
+                    mFUAKit.loadAIProcessor(BUNDLE_AI_HUMAN, FUAITypeEnum.FUAITYPE_HUMAN_PROCESSOR);//人体识别
                     mFUAKit.loadAIProcessor(BUNDLE_AI_HAND, FUAITypeEnum.FUAITYPE_HANDGESTURE);//手势识别
                     mFUAKit.loadAIProcessor(BUNDLE_TONGUE, FUAITypeEnum.FUAITYPE_TONGUETRACKING);//舌头
                 }

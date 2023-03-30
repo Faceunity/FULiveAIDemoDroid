@@ -32,8 +32,8 @@ dependencies {
 
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
 
-    api 'com.faceunity:core:8.5.0'
-    api 'com.faceunity:model:8.5.0'
+    api 'com.faceunity:core:8.6.0'
+    api 'com.faceunity:model:8.6.0'
 
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.recyclerview:recyclerview:1.1.0'
