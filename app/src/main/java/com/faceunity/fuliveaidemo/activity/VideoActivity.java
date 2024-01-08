@@ -27,7 +27,6 @@ import com.faceunity.nama.FURenderer;
 import com.faceunity.nama.utils.FuDeviceUtils;
 import com.faceunity.nama.view.listener.TypeEnum;
 
-
 import java.io.File;
 
 public class VideoActivity extends BaseGlActivity implements OnGlRendererListener, RecordButton.OnRecordListener {
@@ -90,7 +89,7 @@ public class VideoActivity extends BaseGlActivity implements OnGlRendererListene
         /* 播放*/
         mPlayView.setOnClickListener((view) -> {
             if (mSaveView.isSelected()) {
-                Toast.makeText(VideoActivity.this, R.string.save_video_wait,Toast.LENGTH_LONG).show();
+                Toast.makeText(VideoActivity.this, R.string.save_video_wait, Toast.LENGTH_LONG).show();
                 return;
             }
             mSaveView.setVisibility(View.GONE);
@@ -101,7 +100,7 @@ public class VideoActivity extends BaseGlActivity implements OnGlRendererListene
         /* 保存*/
         mSaveView.setOnClickListener((view) -> {
             if (mSaveView.isSelected()) {
-                Toast.makeText(VideoActivity.this, R.string.save_video_wait,Toast.LENGTH_LONG).show();
+                Toast.makeText(VideoActivity.this, R.string.save_video_wait, Toast.LENGTH_LONG).show();
                 return;
             }
             mSaveView.setVisibility(View.GONE);
@@ -173,9 +172,9 @@ public class VideoActivity extends BaseGlActivity implements OnGlRendererListene
     @Override
     public void onSurfaceCreated() {
         FUAIKit.getInstance().setMaxFaces(FUConfig.FU_MAX_FACE);
-        FUAIKit.getInstance().faceProcessorSetFaceLandmarkQuality(FUConfig.DEVICE_LEVEL);
+        FUAIKit.getInstance().faceProcessorSetFaceLandmarkQuality(FUConfig.DEVICE_LEVEL >= 2 ? 2 : 1);
         //高端机开启小脸检测
-        if (FUConfig.DEVICE_LEVEL  > FuDeviceUtils.DEVICE_LEVEL_MID)
+        if (FUConfig.DEVICE_LEVEL > FuDeviceUtils.DEVICE_LEVEL_ONE)
             FUAIKit.getInstance().fuFaceProcessorSetDetectSmallFace(true);
     }
 

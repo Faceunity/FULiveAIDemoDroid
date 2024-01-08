@@ -219,9 +219,9 @@ public class CameraActivity extends BaseGlActivity implements RecordButton.OnRec
     @Override
     public void onSurfaceCreated() {
         FUAIKit.getInstance().setMaxFaces(FUConfig.FU_MAX_FACE);
-        FUAIKit.getInstance().faceProcessorSetFaceLandmarkQuality(FUConfig.DEVICE_LEVEL);
+        FUAIKit.getInstance().faceProcessorSetFaceLandmarkQuality(FUConfig.DEVICE_LEVEL >= 2 ? 2 : 1);
         //高端机开启小脸检测
-        if (FUConfig.DEVICE_LEVEL  > FuDeviceUtils.DEVICE_LEVEL_MID)
+        if (FUConfig.DEVICE_LEVEL > FuDeviceUtils.DEVICE_LEVEL_ONE)
             FUAIKit.getInstance().fuFaceProcessorSetDetectSmallFace(true);
     }
 

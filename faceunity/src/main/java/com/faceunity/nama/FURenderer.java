@@ -102,7 +102,7 @@ public final class FURenderer {
             public void onSuccess(int i, String s) {
                 if (i == FURenderConfig.OPERATE_SUCCESS_AUTH) {
                     mFUAKit.loadAIProcessor(BUNDLE_AI_FACE, FUAITypeEnum.FUAITYPE_FACEPROCESSOR);//人脸识别
-                    mFUAKit.fuSetHumanSegMode(FUConfig.DEVICE_LEVEL  > FuDeviceUtils.DEVICE_LEVEL_MID ? FUPortraitSegmentationEnum.MODE_SEG_GPU_COMMON : FUPortraitSegmentationEnum.MODE_SEG_CPU_COMMON);
+                    mFUAKit.fuSetHumanSegMode(FUConfig.DEVICE_LEVEL  > FuDeviceUtils.DEVICE_LEVEL_ONE ? FUPortraitSegmentationEnum.MODE_SEG_GPU_COMMON : FUPortraitSegmentationEnum.MODE_SEG_CPU_COMMON);
                     mFUAKit.loadAIProcessor(BUNDLE_AI_HUMAN, FUAITypeEnum.FUAITYPE_HUMAN_PROCESSOR);//人体识别
                     mFUAKit.loadAIProcessor(BUNDLE_AI_HAND, FUAITypeEnum.FUAITYPE_HANDGESTURE);//手势识别
                     mFUAKit.loadAIProcessor(BUNDLE_TONGUE, FUAITypeEnum.FUAITYPE_TONGUETRACKING);//舌头

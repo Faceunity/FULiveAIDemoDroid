@@ -12,6 +12,8 @@ public class Effect {
      * 证书各模块验证码
      */
     public static final String MODULE_CODE_FACE_LANDMARKS = "0-4096";
+
+    public static final String MODULE_CODE_FACE_ARMESH = "0-4090";
     public static final String MODULE_CODE_FACE_TONGUE = "0-8192";
     public static final String MODULE_CODE_FACE_EXPRESSION = "2048-0";
     public static final String MODULE_CODE_FACE_EMOTION = "2048-1";
