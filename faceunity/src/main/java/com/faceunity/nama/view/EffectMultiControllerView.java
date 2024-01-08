@@ -80,7 +80,8 @@ public class EffectMultiControllerView extends BaseEffectControllerView {
                 }
             } else if (Effect.MODULE_CODE_FACE_TONGUE.equals(authCode)
                     || Effect.MODULE_CODE_FACE_EXPRESSION.equals(authCode)
-                    || Effect.MODULE_CODE_FACE_EMOTION.equals(authCode)) {//舌头检测，表情识别，情绪识别
+                    || Effect.MODULE_CODE_FACE_EMOTION.equals(authCode)
+                    || Effect.MODULE_CODE_FACE_ARMESH.equals(authCode)) {//舌头检测，表情识别，情绪识别,ARMESH
                 //如果选中了舌头那么人脸效果肯定会选中
                 if (getLandMarkEffect() != null)
                     adapter.setItemSelected(getLandMarkEffect());

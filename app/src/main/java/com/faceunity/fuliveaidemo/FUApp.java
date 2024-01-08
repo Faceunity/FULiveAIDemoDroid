@@ -14,7 +14,7 @@ public class FUApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        FUConfig.DEVICE_LEVEL = FuDeviceUtils.judgeDeviceLevelGPU();
+        FUConfig.DEVICE_LEVEL = FuDeviceUtils.judgeDeviceLevel(true);
         FURenderer.getInstance().setup(this);
     }
 }
