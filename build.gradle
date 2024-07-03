@@ -36,7 +36,7 @@ ext {
     minSdkVersion = 19
     targetSdkVersion = 28
     // update info when release new version
-    namaSdkVersionCode = 890
-    namaSdkVersionName = "8.9.0"
-    namaSdkCommitId = "8.9.0_ALL_AMV2_5d92542_ALL_a7e9860f5"
+    namaSdkVersionCode = 8110
+    namaSdkVersionName = "8.11.0"
+    namaSdkCommitId = "8.11.0_ALL_69103da2_ALL_b8be1cfab"
 }

@@ -24,7 +24,7 @@ public class EffectFaceSource {
     private static final String FACE_TONGUE_BUNDLE_PATH = ASSETS_DIR + "set_tongue.bundle"; // 舌头检测
     public static final String FACE_EXPRESSION_BUNDLE_PATH = ASSETS_DIR + "aitype.bundle"; // 表情识别
     public static final String FACE_EMOTION_BUNDLE_PATH = ASSETS_DIR + "aitype2.bundle"; // 情绪识别
-    public static final String FACE_ARMESH_BUNDLE_PATH = "graphics/" + "armesh.bundle"; // armesh
+    public static final String FACE_ARMESH_BUNDLE_PATH = "graphics/" + "armeshv2.bundle"; // armesh
 
     /**
      * 人脸特效
@@ -45,7 +45,7 @@ public class EffectFaceSource {
         paramMap.put(FURenderer.KEY_AI_TYPE, FURenderer.FACEPROCESSOR_EMOTION_RECOGNIZER);
         faceEffects.add(new Effect(FACE_EMOTION_BUNDLE_PATH, "情绪识别", Effect.TYPE_FACE, Effect.MODULE_CODE_FACE_EMOTION, paramMap));
 
-        faceEffects.add(new Effect(FACE_ARMESH_BUNDLE_PATH, "armesh", Effect.TYPE_FACE, Effect.MODULE_CODE_FACE_ARMESH, null));
+        faceEffects.add(new Effect(FACE_ARMESH_BUNDLE_PATH, "ARMesh", Effect.TYPE_FACE, Effect.MODULE_CODE_FACE_ARMESH, null));
         return faceEffects;
     }
 
