@@ -15,6 +15,7 @@ import com.faceunity.core.entity.FURenderFrameData;
 import com.faceunity.core.entity.FURenderInputData;
 import com.faceunity.core.entity.FURenderOutputData;
 import com.faceunity.core.enumeration.CameraFacingEnum;
+import com.faceunity.core.faceunity.AICommonData;
 import com.faceunity.core.faceunity.FUAIKit;
 import com.faceunity.core.faceunity.FURenderKit;
 import com.faceunity.core.listener.OnGlRendererListener;
@@ -219,7 +220,10 @@ public class CameraActivity extends BaseGlActivity implements RecordButton.OnRec
     @Override
     public void onSurfaceCreated() {
         FUAIKit.getInstance().setMaxFaces(FUConfig.FU_MAX_FACE);
+        // 高精度 2 级以上
         FUAIKit.getInstance().faceProcessorSetFaceLandmarkQuality(FUConfig.DEVICE_LEVEL >= 2 ? 2 : 1);
+        // 高精度增强遮挡
+        FUAIKit.getInstance().fuFaceProcessorSetFaceLandmarkHpOccu(0);
         //高端机开启小脸检测
         if (FUConfig.DEVICE_LEVEL > FuDeviceUtils.DEVICE_LEVEL_ONE)
             FUAIKit.getInstance().fuFaceProcessorSetDetectSmallFace(true);
