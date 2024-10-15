@@ -32,6 +32,7 @@ dependencies {
 
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
 
+
     api 'com.faceunity:core_armesh:8.12.0'
     api 'com.faceunity:model_armesh:8.12.0'
 
