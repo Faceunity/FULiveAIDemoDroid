@@ -125,7 +125,10 @@ public class PhotoActivity extends BaseGlActivity implements OnGlRendererListene
         FUAIKit.getInstance().setMaxFaces(FUConfig.FU_MAX_FACE);
         FUAIKit.getInstance().faceProcessorSetDetectMode(FUFaceProcessorDetectModeEnum.IMAGE);
         FUAIKit.getInstance().setHumanProcessorDetectMode(FUHumanProcessorDetectModeEnum.IMAGE);
+        // 高精度 2 级以上
         FUAIKit.getInstance().faceProcessorSetFaceLandmarkQuality(FUConfig.DEVICE_LEVEL >= 2 ? 2 : 1);
+        // 高精度增强遮挡 先关闭，用户主动开
+        FUAIKit.getInstance().fuFaceProcessorSetFaceLandmarkHpOccu(0);
         //高端机开启小脸检测
         if (FUConfig.DEVICE_LEVEL > FuDeviceUtils.DEVICE_LEVEL_ONE)
             FUAIKit.getInstance().fuFaceProcessorSetDetectSmallFace(true);

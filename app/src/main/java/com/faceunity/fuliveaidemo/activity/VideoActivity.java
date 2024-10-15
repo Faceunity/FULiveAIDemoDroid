@@ -173,6 +173,8 @@ public class VideoActivity extends BaseGlActivity implements OnGlRendererListene
     public void onSurfaceCreated() {
         FUAIKit.getInstance().setMaxFaces(FUConfig.FU_MAX_FACE);
         FUAIKit.getInstance().faceProcessorSetFaceLandmarkQuality(FUConfig.DEVICE_LEVEL >= 2 ? 2 : 1);
+        // 高精度增强遮挡关闭
+        FUAIKit.getInstance().fuFaceProcessorSetFaceLandmarkHpOccu(0);
         //高端机开启小脸检测
         if (FUConfig.DEVICE_LEVEL > FuDeviceUtils.DEVICE_LEVEL_ONE)
             FUAIKit.getInstance().fuFaceProcessorSetDetectSmallFace(true);
