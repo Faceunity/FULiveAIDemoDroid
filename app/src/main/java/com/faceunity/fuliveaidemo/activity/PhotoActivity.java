@@ -19,8 +19,8 @@ import com.faceunity.nama.FURenderer;
 import com.faceunity.nama.utils.FuDeviceUtils;
 import com.faceunity.nama.utils.LogUtils;
 import com.faceunity.nama.view.listener.TypeEnum;
-import java.io.File;
 
+import java.io.File;
 
 /**
  * @author Richie on 2020.05.21
@@ -32,15 +32,12 @@ public class PhotoActivity extends BaseGlActivity implements OnGlRendererListene
     private PhotoRenderer photoRenderer;
 
     int level = 2;
-
     @Override
     protected void onResume() {
         super.onResume();
         level = FuDeviceUtils.judgeDeviceLevel();
         photoRenderer.onResume();
     }
-
-    public static String BUNDLE_FACE_BEAUTIFICATION = "graphics" + File.separator + "face_beautification.bundle";
 
     @Override
     protected void onPause() {
@@ -109,9 +106,12 @@ public class PhotoActivity extends BaseGlActivity implements OnGlRendererListene
 
     }
 
+    public static String BUNDLE_FACE_BEAUTIFICATION = "graphics" + File.separator + "face_beautification.bundle";
+
     @Override
     public void onRenderAfter(FURenderOutputData fuRenderOutputData, FURenderFrameData fuRenderFrameData) {
         FURenderKit.getInstance().enableWarpAntiAlias(BUNDLE_FACE_BEAUTIFICATION, level > FuDeviceUtils.DEVICE_LEVEL_ONE);
+
         trackFace();
         trackHuman();
         queryTrackStatus();

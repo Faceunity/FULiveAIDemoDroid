@@ -13,7 +13,7 @@ import android.view.ViewConfiguration;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.faceunity.FUConfig;
+import com.faceunity.core.support.SDKController;
 import com.faceunity.fuliveaidemo.R;
 import com.faceunity.fuliveaidemo.util.FileUtils;
 import com.faceunity.fuliveaidemo.util.PermissionUtil;
@@ -21,7 +21,6 @@ import com.faceunity.fuliveaidemo.util.ScreenUtils;
 import com.faceunity.fuliveaidemo.util.ToastUtil;
 import com.faceunity.fuliveaidemo.util.UriUtil;
 import com.faceunity.fuliveaidemo.view.OnMultiClickListener;
-import com.faceunity.nama.utils.FuDeviceUtils;
 import com.faceunity.nama.utils.LogUtils;
 
 import java.io.File;
@@ -40,6 +39,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         ScreenUtils.fullScreen(this);
         setContentView(R.layout.activity_main);
+        SDKController.INSTANCE.getVersion$fu_core_all_featureRelease();
 
         PermissionUtil.checkPermission(this);
 

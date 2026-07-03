@@ -46,10 +46,8 @@ public class VideoActivity extends BaseGlActivity implements OnGlRendererListene
 
     //region Activity生命周期绑定
     private Boolean isActivityPause = false;
-    
-    int level = 2;
-    public static String BUNDLE_FACE_BEAUTIFICATION = "graphics" + File.separator + "face_beautification.bundle";
 
+    int level = 2;
     @Override
     protected void onResume() {
         super.onResume();
@@ -147,6 +145,8 @@ public class VideoActivity extends BaseGlActivity implements OnGlRendererListene
 
     int currentFrame = 0;
 
+    public static String BUNDLE_FACE_BEAUTIFICATION = "graphics" + File.separator + "face_beautification.bundle";
+
     @Override
     public void onRenderAfter(FURenderOutputData fuRenderOutputData, FURenderFrameData fuRenderFrameData) {
         FURenderKit.getInstance().enableWarpAntiAlias(BUNDLE_FACE_BEAUTIFICATION, level > FuDeviceUtils.DEVICE_LEVEL_ONE);
@@ -178,7 +178,7 @@ public class VideoActivity extends BaseGlActivity implements OnGlRendererListene
     public void onSurfaceCreated() {
         FUAIKit.getInstance().setMaxFaces(FUConfig.FU_MAX_FACE);
         FUAIKit.getInstance().faceProcessorSetFaceLandmarkQuality(FUConfig.DEVICE_LEVEL >= 2 ? 2 : 1);
-        // 高精度增强遮挡关闭
+        // 高精度增强遮挡 先关闭，开的时候也是 2 级以上
         FUAIKit.getInstance().fuFaceProcessorSetFaceLandmarkHpOccu(0);
         //高端机开启小脸检测
         if (FUConfig.DEVICE_LEVEL > FuDeviceUtils.DEVICE_LEVEL_ONE)

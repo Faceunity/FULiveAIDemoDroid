@@ -15,7 +15,6 @@ import com.faceunity.core.entity.FURenderFrameData;
 import com.faceunity.core.entity.FURenderInputData;
 import com.faceunity.core.entity.FURenderOutputData;
 import com.faceunity.core.enumeration.CameraFacingEnum;
-import com.faceunity.core.faceunity.AICommonData;
 import com.faceunity.core.faceunity.FUAIKit;
 import com.faceunity.core.faceunity.FURenderKit;
 import com.faceunity.core.listener.OnGlRendererListener;
@@ -33,6 +32,7 @@ import com.faceunity.nama.utils.FuDeviceUtils;
 import com.faceunity.nama.view.listener.TypeEnum;
 
 import java.io.File;
+import java.util.HashMap;
 
 /**
  * @author Richie on 2020.05.21
@@ -43,9 +43,16 @@ public class CameraActivity extends BaseGlActivity implements RecordButton.OnRec
     private TextView mTvDebugInfo;
     private FUCameraConfig mFuCameraConfig;
 
+    private HashMap<Integer, String> raceMap = new HashMap<>(5);
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        raceMap.put(-1, "unknow");
+        raceMap.put(0, "black");
+        raceMap.put(1, "white");
+        raceMap.put(2, "yellow");
+        raceMap.put(3, "brown");
         mVideoRecordHelper = new VideoRecordHelper(this, mOnVideoRecordingListener);
     }
 
@@ -85,8 +92,7 @@ public class CameraActivity extends BaseGlActivity implements RecordButton.OnRec
         mTvDebugInfo.setVisibility(View.VISIBLE);
         mTvDebugInfo.setTag(false);
         findViewById(R.id.iv_debug).setOnClickListener(mViewClickListener);
-        findViewById(R.id.iv_switch_cam).setOnClickListener(mViewClickListener);
-    }
+        findViewById(R.id.iv_switch_cam).setOnClickListener(mViewClickListener);}
 
     @Override
     protected void initFuRenderer() {
@@ -97,6 +103,7 @@ public class CameraActivity extends BaseGlActivity implements RecordButton.OnRec
     protected void initGlRenderer() {
         mFuCameraConfig = new FUCameraConfig();
         mCameraRenderer = new CameraRenderer(mGlSurfaceView, mFuCameraConfig, this);
+        FUAIKit.getInstance().fuSetUseFaceRaceDetect(true);
     }
 
     @Override
@@ -124,8 +131,11 @@ public class CameraActivity extends BaseGlActivity implements RecordButton.OnRec
                         break;
                     }
                 }
+
+                int raceInfo = FUAIKit.getInstance().fuGetFaceRaceResult(0);
+
                 String upperText = "resolution:\n" + mFuCameraConfig.cameraWidth + "x" + mFuCameraConfig.cameraHeight
-                        + "\nfps: " + (int) fps + "\nframe cost: " + (int) renderTime + "ms\n";
+                        + "\nfps: " + (int) fps + "\nframe cost: " + (int) renderTime + "ms\nrace:" + raceMap.get(raceInfo) + "\n";
                 String lowerText;
                 if (isAllZero || mTypeEnum == TypeEnum.AVATAR) {
                     lowerText = "yaw: null\npitch: null\nroll: null";
@@ -222,7 +232,7 @@ public class CameraActivity extends BaseGlActivity implements RecordButton.OnRec
         FUAIKit.getInstance().setMaxFaces(FUConfig.FU_MAX_FACE);
         // 高精度 2 级以上
         FUAIKit.getInstance().faceProcessorSetFaceLandmarkQuality(FUConfig.DEVICE_LEVEL >= 2 ? 2 : 1);
-        // 高精度增强遮挡
+        // 高精度增强遮挡 先关闭，开的时候也是 2 级以上
         FUAIKit.getInstance().fuFaceProcessorSetFaceLandmarkHpOccu(0);
         //高端机开启小脸检测
         if (FUConfig.DEVICE_LEVEL > FuDeviceUtils.DEVICE_LEVEL_ONE)
